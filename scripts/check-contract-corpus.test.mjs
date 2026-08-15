@@ -12,13 +12,13 @@ const manifest = JSON.parse(
 describe("sdk-core canonical source provenance", () => {
   it("derives the immutable public source URL from the validated manifest", () => {
     expect(canonicalSourceUrl(manifest)).toBe(
-      "https://raw.githubusercontent.com/mitralab-dev/mitra-sdk-core/" +
+      "https://raw.githubusercontent.com/mitralab-dev/mitra-core-sdk/" +
         "d3d7a3bae3e845749e769f8e899552039ec4001a/contracts/v0.1.0/sdk-parity.json",
     )
   })
 
   it.each([
-    ["repository", "https://github.com/example/mitra-sdk-core"],
+    ["repository", "https://github.com/example/mitra-core-sdk"],
     ["path", "contracts/v0.1.0/other.json"],
     ["commit", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
   ])("rejects a false source %s", (field, value) => {

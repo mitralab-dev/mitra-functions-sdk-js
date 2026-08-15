@@ -10,7 +10,7 @@ import { fileURLToPath, URL } from "node:url"
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const sourceManifestPath = join(root, "contracts", "sdk-core-v0.1.0.manifest.json")
 const expectedSource = Object.freeze({
-  repository: "https://github.com/mitralab-dev/mitra-sdk-core",
+  repository: "https://github.com/mitralab-dev/mitra-core-sdk",
   commit: "d3d7a3bae3e845749e769f8e899552039ec4001a",
   path: "contracts/v0.1.0/sdk-parity.json",
 })
