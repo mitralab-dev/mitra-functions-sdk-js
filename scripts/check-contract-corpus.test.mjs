@@ -13,7 +13,7 @@ describe("sdk-core canonical source provenance", () => {
   it("derives the immutable public source URL from the validated manifest", () => {
     expect(canonicalSourceUrl(manifest)).toBe(
       "https://raw.githubusercontent.com/mitralab-dev/mitra-core-sdk/" +
-        "d3d7a3bae3e845749e769f8e899552039ec4001a/contracts/v0.1.0/sdk-parity.json",
+        "b513454d0d1f7344a4656cd9c0e1e32530c5ea90/contracts/v0.1.0/sdk-parity.json",
     )
   })
 

@@ -152,7 +152,7 @@ The access token is redacted from API error messages and error details.
 The test suite reads SDK-PARITY-001 directly from the installed
 `@mitralab.io/sdk-core` package. The source manifest pins Core version 0.1.0,
 the SHA-256 digest, and the full source commit
-`d3d7a3bae3e845749e769f8e899552039ec4001a`. It does not duplicate the corpus.
+`b513454d0d1f7344a4656cd9c0e1e32530c5ea90`. It does not duplicate the corpus.
 
 The JavaScript consumer requirement is exactly `httpAdapterCases: all`. Tests
 execute all recorded 404, 503, and timeout cases through the public client and
@@ -172,12 +172,9 @@ npm install
 npm run check
 ```
 
-During the stacked `0.1.0` bootstrap, install the locally packed core without changing this repository's manifest or lockfile:
-
-```bash
-npm install --no-save --package-lock=false ../mitralab.io-sdk-core-0.1.0.tgz
-MITRA_SDK_CORE_TARBALL=../mitralab.io-sdk-core-0.1.0.tgz npm run check
-```
+`@mitralab.io/sdk-core@0.1.0` is resolved from the public npm registry and
+locked by integrity in `package-lock.json`. Do not replace it with a `file:`
+dependency or a local tarball.
 
 The contract source can be checked explicitly without changing the manifest or
 lockfile:
@@ -185,7 +182,5 @@ lockfile:
 ```bash
 npm run check:contracts -- --canonical /path/to/sdk-parity.json
 ```
-
-The relative path above is illustrative. No `file:` dependency or local tarball path is committed. Publish `@mitralab.io/sdk-core` first, then regenerate the lockfile from the npm registry before opening the consumer PR.
 
 The package builds ESM, CommonJS, and TypeScript declarations in `dist/`. Tests enforce at least 80 percent coverage for lines, functions, branches, and statements.
