@@ -44,6 +44,8 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - name: Compare installed sdk-core corpus with immutable source
+        run: npm run check:contracts -- --canonical-source
       - run: npm run format:check
       - run: npm run lint
       - run: npm run typecheck

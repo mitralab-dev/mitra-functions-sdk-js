@@ -40,6 +40,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+      - name: Compare installed sdk-core corpus with immutable source
+        run: npm run check:contracts -- --canonical-source
 
   bump:
     needs: test

@@ -135,13 +135,31 @@ Credentials configured for an integration are injected by the Integration servic
 
 ## Errors and request behavior
 
-API, timeout, invalid response, and network failures throw `MitraApiError`. The error exposes `status`, `code`, `details`, `requestId`, and `retryable` when the API provides them. Configuration failures throw `MitraConfigurationError`.
+API, timeout, invalid response, and network failures throw `MitraApiError`. The error exposes `status`, `code`, `details`, `requestId`, and `retryable`, preserving API metadata when it is provided. Configuration failures throw `MitraConfigurationError`.
+
+When an API error omits `retryable`, the HTTP adapter classifies 4xx responses
+as `false` and 5xx responses as `true`. This field is diagnostic classification
+only. The SDK still makes one attempt and never retries a request automatically.
 
 The Python package uses idiomatic specialized names for local failures. JavaScript `REQUEST_TIMEOUT` and `NETWORK_ERROR` map to Python `MitraNetworkError`, while JavaScript `INVALID_RESPONSE` maps to Python `MitraResponseError`. API responses use `MitraApiError` in both packages.
 
 Every request sends `Authorization: Bearer <token>` and `X-App-Id`. The default timeout is 10 seconds. Requests are never retried automatically, which avoids replaying writes with unknown idempotency.
 
 The access token is redacted from API error messages and error details.
+
+## Contract parity
+
+The test suite reads SDK-PARITY-001 directly from the installed
+`@mitralab.io/sdk-core` package. The source manifest pins Core version 0.1.0,
+the SHA-256 digest, and the full source commit
+`d3d7a3bae3e845749e769f8e899552039ec4001a`. It does not duplicate the corpus.
+
+The JavaScript consumer requirement is exactly `httpAdapterCases: all`. Tests
+execute all recorded 404, 503, and timeout cases through the public client and
+the real `HttpClient`, using a mock fetch only at the network boundary. They
+verify the request and the complete error semantics. Continuous integration and
+release gates also download the canonical file from the public Core repository
+at the pinned commit and compare it byte for byte with the installed package.
 
 ## Scope
 
@@ -159,6 +177,13 @@ During the stacked `0.1.0` bootstrap, install the locally packed core without ch
 ```bash
 npm install --no-save --package-lock=false ../mitralab.io-sdk-core-0.1.0.tgz
 MITRA_SDK_CORE_TARBALL=../mitralab.io-sdk-core-0.1.0.tgz npm run check
+```
+
+The contract source can be checked explicitly without changing the manifest or
+lockfile:
+
+```bash
+npm run check:contracts -- --canonical /path/to/sdk-parity.json
 ```
 
 The relative path above is illustrative. No `file:` dependency or local tarball path is committed. Publish `@mitralab.io/sdk-core` first, then regenerate the lockfile from the npm registry before opening the consumer PR.

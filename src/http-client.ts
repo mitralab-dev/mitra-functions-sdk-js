@@ -117,7 +117,9 @@ export class HttpClient implements Transport {
           rawRequestId === undefined ? undefined : redactText(rawRequestId, this.#accessToken)
         const code = rawCode === undefined ? undefined : redactText(rawCode, this.#accessToken)
         const retryable =
-          typeof errorPayload.retryable === "boolean" ? errorPayload.retryable : undefined
+          typeof errorPayload.retryable === "boolean"
+            ? errorPayload.retryable
+            : response.status >= 500
 
         throw new MitraApiError(message, response.status, {
           ...(code === undefined ? {} : { code }),
@@ -133,7 +135,7 @@ export class HttpClient implements Transport {
     } catch (error) {
       if (error instanceof MitraApiError) throw error
       if (controller.signal.aborted) {
-        throw new MitraApiError("The Mitra API request timed out", 0, {
+        throw new MitraApiError("Mitra request timed out", 0, {
           code: "REQUEST_TIMEOUT",
           retryable: true,
         })

@@ -733,6 +733,7 @@ describe("HTTP failures", () => {
     )
 
     await expect(createClient({ ...config, timeoutMs: 1, fetch }).auth.me()).rejects.toMatchObject({
+      message: "Mitra request timed out",
       status: 0,
       code: "REQUEST_TIMEOUT",
       retryable: true,
