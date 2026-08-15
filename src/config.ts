@@ -23,6 +23,12 @@ function requiredValue(value: string | undefined, name: string): string {
   return value.trim()
 }
 
+function removeTrailingSlashes(value: string): string {
+  let end = value.length
+  while (end > 0 && value.charCodeAt(end - 1) === 47) end -= 1
+  return value.slice(0, end)
+}
+
 function normalizeApiUrl(value: string): string {
   let parsed: URL
   try {
@@ -45,7 +51,7 @@ function normalizeApiUrl(value: string): string {
       "apiUrl must not include credentials, query parameters, or a fragment",
     )
   }
-  return parsed.toString().replace(/\/+$/, "")
+  return removeTrailingSlashes(parsed.toString())
 }
 
 export function resolveConfig(
