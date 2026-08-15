@@ -42,6 +42,57 @@ function optionalString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined
 }
 
+function appendQueryParameters(url: URL, params: Record<string, QueryParamValue>): void {
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined) continue
+    url.searchParams.append(key, typeof value === "string" ? value : value.toString())
+  }
+}
+
+async function parsePayload(response: Response): Promise<unknown> {
+  const text = await response.text()
+  try {
+    return JSON.parse(text)
+  } catch {
+    if (response.ok) {
+      throw new MitraApiError("The Mitra API returned invalid JSON", response.status, {
+        code: "INVALID_RESPONSE",
+        retryable: false,
+      })
+    }
+    return {}
+  }
+}
+
+function createApiError(response: Response, payload: unknown, accessToken: string): MitraApiError {
+  const errorPayload: ErrorPayload =
+    payload && typeof payload === "object" ? (payload as ErrorPayload) : {}
+  const rawMessage = optionalString(errorPayload.message)
+  const message = redactText(
+    rawMessage ?? `Request failed with status ${response.status}`,
+    accessToken,
+  )
+  const rawRequestId =
+    optionalString(errorPayload.request_id) ??
+    optionalString(errorPayload.requestId) ??
+    response.headers.get("X-Request-Id") ??
+    undefined
+  const rawCode = optionalString(errorPayload.error_code) ?? optionalString(errorPayload.code)
+  const requestId = rawRequestId === undefined ? undefined : redactText(rawRequestId, accessToken)
+  const code = rawCode === undefined ? undefined : redactText(rawCode, accessToken)
+  const retryable =
+    typeof errorPayload.retryable === "boolean" ? errorPayload.retryable : response.status >= 500
+
+  return new MitraApiError(message, response.status, {
+    ...(code === undefined ? {} : { code }),
+    ...(errorPayload.details === undefined
+      ? {}
+      : { details: redactDetails(errorPayload.details, accessToken) }),
+    ...(requestId === undefined ? {} : { requestId }),
+    ...(retryable === undefined ? {} : { retryable }),
+  })
+}
+
 export class HttpClient implements Transport {
   readonly #accessToken: string
 
@@ -60,9 +111,7 @@ export class HttpClient implements Transport {
 
   async request<T>(path: string, options: TransportRequestOptions = {}): Promise<T> {
     const url = new URL(`${this.baseUrl}${path}`)
-    for (const [key, value] of Object.entries(options.params ?? {})) {
-      if (value !== undefined) url.searchParams.append(key, String(value))
-    }
+    appendQueryParameters(url, options.params ?? {})
 
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs)
@@ -85,51 +134,8 @@ export class HttpClient implements Transport {
 
       if (response.status === 204) return undefined as T
 
-      const text = await response.text()
-      let payload: unknown
-      try {
-        payload = JSON.parse(text)
-      } catch {
-        if (response.ok) {
-          throw new MitraApiError("The Mitra API returned invalid JSON", response.status, {
-            code: "INVALID_RESPONSE",
-            retryable: false,
-          })
-        }
-        payload = {}
-      }
-
-      if (!response.ok) {
-        const errorPayload: ErrorPayload =
-          payload && typeof payload === "object" ? (payload as ErrorPayload) : {}
-        const rawMessage = optionalString(errorPayload.message)
-        const message = redactText(
-          rawMessage ?? `Request failed with status ${response.status}`,
-          this.#accessToken,
-        )
-        const rawRequestId =
-          optionalString(errorPayload.request_id) ??
-          optionalString(errorPayload.requestId) ??
-          response.headers.get("X-Request-Id") ??
-          undefined
-        const rawCode = optionalString(errorPayload.error_code) ?? optionalString(errorPayload.code)
-        const requestId =
-          rawRequestId === undefined ? undefined : redactText(rawRequestId, this.#accessToken)
-        const code = rawCode === undefined ? undefined : redactText(rawCode, this.#accessToken)
-        const retryable =
-          typeof errorPayload.retryable === "boolean"
-            ? errorPayload.retryable
-            : response.status >= 500
-
-        throw new MitraApiError(message, response.status, {
-          ...(code === undefined ? {} : { code }),
-          ...(errorPayload.details === undefined
-            ? {}
-            : { details: redactDetails(errorPayload.details, this.#accessToken) }),
-          ...(requestId === undefined ? {} : { requestId }),
-          ...(retryable === undefined ? {} : { retryable }),
-        })
-      }
+      const payload = await parsePayload(response)
+      if (!response.ok) throw createApiError(response, payload, this.#accessToken)
 
       return payload as T
     } catch (error) {

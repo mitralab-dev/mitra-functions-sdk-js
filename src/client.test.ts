@@ -150,6 +150,17 @@ describe("configuration", () => {
     })
   })
 
+  it("removes every trailing slash from the configured API URL", async () => {
+    const fetch = mockFetch(json({ data: [], limit: 1, skip: 0, total: 0, hasMore: false }))
+    const client = createClient({ ...config, apiUrl: "https://api.example.com/root///", fetch })
+
+    await client.entities.Task!.list({ limit: 1 })
+
+    expect(requestAt(fetch).url).toBe(
+      "https://api.example.com/root/data-manager/api/v1/tables/Task/records?limit=1",
+    )
+  })
+
   it.each([
     [{ accessToken: "token", appId: "app" }, "apiUrl is required"],
     [{ apiUrl: "https://api.example.com", appId: "app" }, "accessToken is required"],
