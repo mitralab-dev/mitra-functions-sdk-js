@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## Unreleased
+
+- Re-export the public surface of the legacy `mitra-sdk` package, marked `@deprecated`.
+- Configure the legacy SDK from the same environment `createClient` resolves.
+
 ## 0.1.0
 
 - Add environment-based Server Function client configuration.

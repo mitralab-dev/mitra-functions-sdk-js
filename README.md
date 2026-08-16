@@ -165,6 +165,32 @@ at the pinned commit and compare it byte for byte with the installed package.
 
 Version 0.1 includes application runtime operations: current user, entity CRUD, custom query execution, Server Function execution management, and integrations. Administrative control-plane methods and the legacy messenger API are intentionally excluded.
 
+## Legacy compatibility
+
+The complete public surface of the legacy `mitra-sdk` package is re-exported from this
+package so Server Function code can adopt `@mitralab.io/functions-sdk` without a rewrite.
+Every re-export is the legacy binding itself, unchanged, and is marked `@deprecated` with
+the new equivalent when one exists. The builder tier, the Agent SDK, and raw SQL execution
+have no equivalent yet and remain supported through these exports.
+
+```typescript
+import { createClient, listProjectsMitra } from "@mitralab.io/functions-sdk"
+
+createClient()
+const projects = await listProjectsMitra()
+```
+
+`createClient()` and `createClientFromEnvironment()` configure the legacy SDK with the
+same `apiUrl`, `accessToken`, and `appId` they resolve, so legacy code does not read the
+environment itself. The legacy SDK reaches the platform through the BFF gateway routes
+while this package derives its own service prefixes from the same base URL, so
+`MITRA_API_URL` is forwarded unchanged and no URL transformation is applied. The legacy
+SDK receives `appId` as its `projectId` and accepts the access token with or without a
+`Bearer` prefix.
+
+The legacy package is pinned to an exact version. Nothing in it is modified or published
+by this package.
+
 ## Development
 
 ```bash

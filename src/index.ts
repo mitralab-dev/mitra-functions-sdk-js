@@ -13,3 +13,4 @@ export type {
   User,
 } from "@mitralab.io/sdk-core"
 export type { Fetch, MitraClientConfig, MitraEnvironment } from "./types"
+export * from "./legacy"

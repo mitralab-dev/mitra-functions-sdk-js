@@ -65,7 +65,8 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "@mitralab.io/sdk-core": "^0.1.0"
+    "@mitralab.io/sdk-core": "^0.1.0",
+    "mitra-sdk": "1.0.63-beta.32"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

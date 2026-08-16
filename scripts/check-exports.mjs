@@ -15,6 +15,17 @@ for (const exported of [
   assert.equal(typeof esm[exported], "function", `ESM export ${exported} is missing`)
 }
 
+const legacy = require("mitra-sdk")
+
+for (const exported of Object.keys(legacy)) {
+  assert.equal(
+    typeof commonJs[exported],
+    "function",
+    `CommonJS legacy export ${exported} is missing`,
+  )
+  assert.equal(typeof esm[exported], "function", `ESM legacy export ${exported} is missing`)
+}
+
 for (const internal of [
   "AuthModule",
   "EntitiesModule",

@@ -13,6 +13,7 @@ import { resolveConfig } from "./config"
 import type { ResolvedMitraClientConfig } from "./config"
 import { MitraApiError, MitraConfigurationError } from "./errors"
 import { HttpClient } from "./http-client"
+import { configureLegacySdk } from "./legacy/configure"
 import type { MitraClientConfig, MitraEnvironment } from "./types"
 
 interface AppInfoResponse {
@@ -108,10 +109,15 @@ class DefaultMitraClient implements MitraClient {
   }
 }
 
+function createConfiguredClient(config: ResolvedMitraClientConfig): MitraClient {
+  configureLegacySdk(config)
+  return new DefaultMitraClient(config)
+}
+
 export function createClient(config: MitraClientConfig = {}): MitraClient {
-  return new DefaultMitraClient(resolveConfig(config))
+  return createConfiguredClient(resolveConfig(config))
 }
 
 export function createClientFromEnvironment(environment?: MitraEnvironment): MitraClient {
-  return new DefaultMitraClient(resolveConfig({}, environment))
+  return createConfiguredClient(resolveConfig({}, environment))
 }
