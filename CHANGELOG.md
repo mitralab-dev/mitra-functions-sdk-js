@@ -2,10 +2,24 @@
 
 All notable changes to this project are documented in this file.
 
-## Unreleased
+## 0.2.0-beta.0
 
-- Re-export the public surface of the legacy `mitra-sdk` package, marked `@deprecated`.
+This working tree prepares the `0.2.0-beta.0` package. The immutable Core source pin
+and npm lock integrity are finalized after `@mitralab.io/sdk-core@0.2.0-beta.0` is
+published and before this package is released.
+
+- Re-export exactly the runtime and type surface of `mitra-sdk@1.0.63-beta.39`,
+  marked `@deprecated`, without adding browser-only interactions exports.
 - Configure the legacy SDK from the same environment `createClient` resolves.
+- Expose the complete native `sdk-core` module surface through direct service transports.
+- Add authenticated Code Studio, Copilot, and Messenger transports.
+- Add native live Agent sessions over authenticated HTTP input and SSE output channels.
+- Forward Core Agent session transport preferences to the runtime SSE adapter.
+- Add an anonymous Public Functions transport that omits authorization and app headers.
+- Add anonymous polling for executions created by the public async Function route.
+- Align the deprecated bridge with the `mitra-sdk` beta.39 version baked into the E2B runtime.
+- Restrict Code Studio operations to the configured runtime app and add a `currentApp` facade.
+- Document runtime authorization gaps and the pending Core 0.2.0-beta.0 release gate.
 
 ## 0.1.0
 

@@ -5,6 +5,7 @@ export const DEFAULT_TIMEOUT_MS = 10_000
 
 export interface ResolvedMitraClientConfig {
   apiUrl: string
+  legacyBaseUrl: string
   accessToken: string
   appId: string
   dataSourceId?: string
@@ -83,6 +84,7 @@ export function resolveConfig(
 
   return {
     apiUrl,
+    legacyBaseUrl: normalizeApiUrl(config.legacyBaseUrl ?? environment.MITRA_BASE_URL ?? apiUrl),
     accessToken,
     appId,
     ...(dataSourceId === undefined ? {} : { dataSourceId: dataSourceId.trim() }),

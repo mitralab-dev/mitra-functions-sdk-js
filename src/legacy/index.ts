@@ -7,10 +7,9 @@
  * legacy API.
  *
  * The legacy SDK talks to the platform through the BFF gateway, whose routes live
- * under `/agentAiShortcut` and `/interactions`, while this package derives `/iam`,
- * `/functions`, and the other service prefixes from the same base URL. Both work
- * against the same gateway, so `MITRA_API_URL` is handed to the legacy SDK exactly
- * as configured, with no URL transformation.
+ * under `/agentAiShortcut` and `/interactions`. The native client derives `/iam`,
+ * `/functions`, and the other direct-to-service prefixes from the same platform
+ * origin without using the BFF. Deprecated bindings use the separate legacy base URL.
  *
  * `createClient()` wires the legacy SDK to the same runtime environment, so legacy
  * Server Function code runs without reading the environment itself.
@@ -142,8 +141,8 @@ export const stopServerFunctionExecutionMitra = legacy.stopServerFunctionExecuti
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * Unauthenticated public execution is not part of the runtime SDK. There is no replacement yet;
- * this API is still supported.
+ * Use `mitra.publicFunctions.executeAsync` and `mitra.publicFunctions.getExecution` instead.
+ * Both native methods use the direct anonymous Functions API.
  */
 export const executePublicServerFunctionAsyncMitra = legacy.executePublicServerFunctionAsyncMitra
 
@@ -188,8 +187,8 @@ export const callIntegrationMitra = legacy.callIntegrationMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * The runtime integration module only executes integrations. There is no replacement yet; this API
- * is still supported.
+ * Use `mitra.integrationAdmin.list` instead. It returns the native paginated config shape rather
+ * than the legacy BFF envelope.
  */
 export const listIntegrationsMitra = legacy.listIntegrationsMitra
 
@@ -209,31 +208,36 @@ export type ListIntegrationsOptions = legacy.ListIntegrationsOptions
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.apps.list` in a tenant-scoped client. Functions runtimes reject this tenant-level
+ * operation because they are fixed to one app, and the native response shape differs.
  */
 export const getProjectsMitra = legacy.getProjectsMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.context.getAppContext` instead. The native method composes safe summaries and may
+ * return 403 for member data with the default Functions runtime token.
  */
 export const getProjectContextMitra = legacy.getProjectContextMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.apps.list` in a tenant-scoped client. Functions runtimes reject this tenant-level
+ * operation because they are fixed to one app, and pagination differs.
  */
 export const listProjectsMitra = legacy.listProjectsMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.apps.create` in a tenant-scoped client. Functions runtimes reject app creation, and
+ * the native input and response types differ from the legacy project contract.
  */
 export const createProjectMitra = legacy.createProjectMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.currentApp.update` instead. It updates only native app metadata and returns an
+ * `AppDefinition`, not the legacy project settings envelope.
  */
 export const updateProjectSettingsMitra = legacy.updateProjectSettingsMitra
 
@@ -244,57 +248,62 @@ export const updateProjectSettingsMitra = legacy.updateProjectSettingsMitra
 export const getGitConfigMitra = legacy.getGitConfigMitra
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy project creation type. Use `AppCreateInput`; native app creation is not
+ * available in the app-scoped Functions runtime and the fields differ.
  */
 export type CreateProjectOptions = legacy.CreateProjectOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy project creation response. Use `AppDefinition`; its native shape differs.
  */
 export type CreateProjectResponse = legacy.CreateProjectResponse
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy project context input. Use `AppGetOptions` or `context.getAppContext(appId)`.
  */
 export type GetProjectContextOptions = legacy.GetProjectContextOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy project context response. Use `AppContext`; it contains safe native summaries.
  */
 export type GetProjectContextResponse = legacy.GetProjectContextResponse
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy project collection response. Use `Page<AppSummary>` from `apps.list`.
  */
 export type GetProjectsResponse = legacy.GetProjectsResponse
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy project list input. Use `AppListOptions`; tenant-level listing is unavailable
+ * in the app-scoped Functions runtime.
  */
 export type ListProjectsOptions = legacy.ListProjectsOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy project list response. Use `Page<AppSummary>`; pagination and fields differ.
  */
 export type ListProjectsResponse = legacy.ListProjectsResponse
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy project settings input. Use `AppUpdateInput`; unsupported legacy settings are
+ * not silently translated.
  */
 export type UpdateProjectSettingsOptions = legacy.UpdateProjectSettingsOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy project settings response. Use `AppDefinition`.
  */
 export type UpdateProjectSettingsResponse = legacy.UpdateProjectSettingsResponse
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy Git configuration type. There is no native replacement; this API remains
+ * supported through the legacy bridge.
  */
 export type GetGitConfigOptions = legacy.GetGitConfigOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy Git configuration response. There is no native replacement; this API remains
+ * supported through the legacy bridge.
  */
 export type GetGitConfigResponse = legacy.GetGitConfigResponse
 
@@ -302,65 +311,69 @@ export type GetGitConfigResponse = legacy.GetGitConfigResponse
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.dataSources.create` instead. The native authoring API accepts EXTERNAL Data Sources
+ * only and uses `ConnectionConfig`, not the legacy JDBC payload.
  */
 export const createJdbcConnectionMitra = legacy.createJdbcConnectionMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.dataSources.list` instead. It returns a native page without the legacy BFF envelope.
  */
 export const listJdbcConnectionsMitra = legacy.listJdbcConnectionsMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.dataSources.update` instead. The native method replaces the supplied connection
+ * configuration and accepts EXTERNAL Data Sources only.
  */
 export const updateJdbcConnectionMitra = legacy.updateJdbcConnectionMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.dataSources.delete` instead. The native method uses the Data Source UUID directly.
  */
 export const deleteJdbcConnectionMitra = legacy.deleteJdbcConnectionMitra
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy JDBC create input. Use `DataSourceCreateInput`; the native API supports
+ * EXTERNAL Data Sources and a different connection shape.
  */
 export type CreateJdbcConnectionOptions = legacy.CreateJdbcConnectionOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy JDBC create response. Use `DataSourceDefinition`.
  */
 export type CreateJdbcConnectionResponse = legacy.CreateJdbcConnectionResponse
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy JDBC delete input. Use the native Data Source UUID directly.
  */
 export type DeleteJdbcConnectionOptions = legacy.DeleteJdbcConnectionOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy JDBC delete response. `dataSources.delete` resolves with no response body.
  */
 export type DeleteJdbcConnectionResponse = legacy.DeleteJdbcConnectionResponse
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy JDBC list input. Use `PageOptions` with `dataSources.list`.
  */
 export type ListJdbcConnectionsOptions = legacy.ListJdbcConnectionsOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy JDBC list response. Use `Page<DataSourceDefinition>`.
  */
 export type ListJdbcConnectionsResponse = legacy.ListJdbcConnectionsResponse
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy JDBC update input. Use `DataSourceUpdateInput`; fields and replacement
+ * semantics differ.
  */
 export type UpdateJdbcConnectionOptions = legacy.UpdateJdbcConnectionOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy JDBC update response. Use `DataSourceDefinition`.
  */
 export type UpdateJdbcConnectionResponse = legacy.UpdateJdbcConnectionResponse
 
@@ -368,55 +381,52 @@ export type UpdateJdbcConnectionResponse = legacy.UpdateJdbcConnectionResponse
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * These run raw SQL against a project data source, which `mitra.queries.execute`
- * does not do: it runs a saved query by id.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.sql.executeQuery` instead. It runs against the runtime app Data Source and returns the
+ * native query result rather than the legacy BFF envelope.
  */
 export const runQueryMitra = legacy.runQueryMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * These run raw SQL against a project data source, which `mitra.queries.execute`
- * does not do: it runs a saved query by id.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.sql.executeDdl` instead. The native API accepts a batch of typed DDL statements and
+ * returns per-statement results.
  */
 export const runDdlMitra = legacy.runDdlMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * These run raw SQL against a project data source, which `mitra.queries.execute`
- * does not do: it runs a saved query by id.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.sql.executeDml` instead. The native API accepts a batch of typed DML statements and
+ * returns per-statement results.
  */
 export const runDmlMitra = legacy.runDmlMitra
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy raw-query input. Call `mitra.sql.executeQuery(sql, parameters)` directly.
  */
 export type RunQueryOptions = legacy.RunQueryOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy raw-query response. Use `QueryResult`.
  */
 export type RunQueryResponse = legacy.RunQueryResponse
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy DDL input. Use `DdlStatement[]` with `mitra.sql.executeDdl`.
  */
 export type RunDdlOptions = legacy.RunDdlOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy DDL response. Use `BatchExecution`.
  */
 export type RunDdlResponse = legacy.RunDdlResponse
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy DML input. Use `DmlStatement[]` with `mitra.sql.executeDml`.
  */
 export type RunDmlOptions = legacy.RunDmlOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy DML response. Use `BatchExecution`.
  */
 export type RunDmlResponse = legacy.RunDmlResponse
 
@@ -424,81 +434,88 @@ export type RunDmlResponse = legacy.RunDmlResponse
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.schema.listTables` instead. Its native filters and response shape differ from the
+ * legacy project-scoped payload.
  */
 export const listTablesMitra = legacy.listTablesMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.schema.createTable` instead. The native method accepts explicit typed columns and
+ * returns no legacy response envelope.
  */
 export const createOnlineTableMitra = legacy.createOnlineTableMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.schema.listTables({ scope: "APP" })` instead. The native response describes schemas,
+ * tables, columns, and foreign keys rather than online-table records.
  */
 export const listOnlineTablesMitra = legacy.listOnlineTablesMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * There is no replacement yet; this API is still supported.
+ * Use the focused `mitra.schema.addColumn`, `dropColumn`, or `truncateTable` methods. There is no
+ * one-call native replacement for the legacy whole-table update payload.
  */
 export const updateOnlineTableMitra = legacy.updateOnlineTableMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.schema.dropTable` instead. It returns no legacy response envelope.
  */
 export const deleteOnlineTableMitra = legacy.deleteOnlineTableMitra
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy table-list input preserved under its original name. Use
+ * `CoreListTablesOptions` with `mitra.schema.listTables`; scopes and response shapes differ.
  */
 export type ListTablesOptions = legacy.ListTablesOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy table-list response. Use `SchemaTables[]`.
  */
 export type ListTablesResponse = legacy.ListTablesResponse
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy online-table create input. Use a table name and `ColumnInput[]` with
+ * `mitra.schema.createTable`; fields differ.
  */
 export type CreateOnlineTableOptions = legacy.CreateOnlineTableOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy online-table create response. `schema.createTable` has no response body.
  */
 export type CreateOnlineTableResponse = legacy.CreateOnlineTableResponse
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy online-table delete input. Pass the table name to `schema.dropTable`.
  */
 export type DeleteOnlineTableOptions = legacy.DeleteOnlineTableOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy online-table delete response. `schema.dropTable` has no response body.
  */
 export type DeleteOnlineTableResponse = legacy.DeleteOnlineTableResponse
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy online-table list input. Use `CoreListTablesOptions` with APP scope.
  */
 export type ListOnlineTablesOptions = legacy.ListOnlineTablesOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy online-table list response. Use `SchemaTables[]`.
  */
 export type ListOnlineTablesResponse = legacy.ListOnlineTablesResponse
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy whole-table update input. Use focused `schema` column and truncate methods;
+ * there is no one-call native equivalent.
  */
 export type UpdateOnlineTableOptions = legacy.UpdateOnlineTableOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy whole-table update response. Native schema mutations have no response body.
  */
 export type UpdateOnlineTableResponse = legacy.UpdateOnlineTableResponse
 
@@ -506,97 +523,101 @@ export type UpdateOnlineTableResponse = legacy.UpdateOnlineTableResponse
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.functionsAdmin.create` instead. The native input names the runtime explicitly and
+ * returns the complete Function definition.
  */
 export const createServerFunctionMitra = legacy.createServerFunctionMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.functionsAdmin.get` instead. It returns the native Function and current version DTO.
  */
 export const readServerFunctionMitra = legacy.readServerFunctionMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.functionsAdmin.list` instead. It is paginated and does not return the legacy envelope.
  */
 export const listServerFunctionsMitra = legacy.listServerFunctionsMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.functionsAdmin.patch`; it preserves fields omitted from the partial update.
  */
 export const updateServerFunctionMitra = legacy.updateServerFunctionMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.functionsAdmin.delete` instead. It returns no legacy response envelope.
  */
 export const deleteServerFunctionMitra = legacy.deleteServerFunctionMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.functionsAdmin.setVisibility` instead. Map the legacy toggle to `PUBLIC` or `PRIVATE`.
  */
 export const togglePublicExecutionMitra = legacy.togglePublicExecutionMitra
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy Function create input. Use `FunctionCreateInput`; runtime and data-source
+ * semantics are explicit in the native type.
  */
 export type CreateServerFunctionOptions = legacy.CreateServerFunctionOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy Function create response. Use `FunctionDefinition`.
  */
 export type CreateServerFunctionResponse = legacy.CreateServerFunctionResponse
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy Function delete input. Pass the Function UUID to `functionsAdmin.delete`.
  */
 export type DeleteServerFunctionOptions = legacy.DeleteServerFunctionOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy Function delete response. The native delete has no response body.
  */
 export type DeleteServerFunctionResponse = legacy.DeleteServerFunctionResponse
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy Function list input. Use `FunctionListOptions`.
  */
 export type ListServerFunctionsOptions = legacy.ListServerFunctionsOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy Function list response. Use `Page<FunctionSummary>`.
  */
 export type ListServerFunctionsResponse = legacy.ListServerFunctionsResponse
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy Function read input. Pass the Function UUID to `functionsAdmin.get`.
  */
 export type ReadServerFunctionOptions = legacy.ReadServerFunctionOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy Function read response. Use `FunctionDefinition`.
  */
 export type ReadServerFunctionResponse = legacy.ReadServerFunctionResponse
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy Function update input. Use `FunctionPatchInput`; the native single-Function
+ * surface preserves omitted fields through PATCH.
  */
 export type UpdateServerFunctionOptions = legacy.UpdateServerFunctionOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy Function update response. Use `FunctionDefinition`.
  */
 export type UpdateServerFunctionResponse = legacy.UpdateServerFunctionResponse
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy visibility toggle input. Use `FunctionVisibility` with
+ * `functionsAdmin.setVisibility`.
  */
 export type TogglePublicExecutionOptions = legacy.TogglePublicExecutionOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy visibility toggle response. Use `FunctionDefinition`.
  */
 export type TogglePublicExecutionResponse = legacy.TogglePublicExecutionResponse
 
@@ -604,98 +625,104 @@ export type TogglePublicExecutionResponse = legacy.TogglePublicExecutionResponse
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.integrationAdmin.create` instead. The native method consumes a template UUID, alias,
+ * and complete values map rather than the legacy authorization structure.
  */
 export const createIntegrationMitra = legacy.createIntegrationMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.integrationAdmin.update` instead. Omitting `values` preserves stored credentials.
  */
 export const updateIntegrationMitra = legacy.updateIntegrationMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.integrationAdmin.delete` instead. It returns no legacy response envelope.
  */
 export const deleteIntegrationMitra = legacy.deleteIntegrationMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.integrationAdmin.testCredentials` instead. The native method tests a template and
+ * values map without storing them and returns `ConnectionTestResult`.
  */
 export const testIntegrationMitra = legacy.testIntegrationMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.integrationAdmin.testConfig` instead. It tests an already stored config by UUID.
  */
 export const testIntegrationByIdMitra = legacy.testIntegrationByIdMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.integrationTemplates.list` instead. It is paginated and returns native summaries.
  */
 export const listIntegrationTemplatesMitra = legacy.listIntegrationTemplatesMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.integrationTemplates.get` instead. The native template schema differs from the legacy
+ * connector template response.
  */
 export const getIntegrationTemplateMitra = legacy.getIntegrationTemplateMitra
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy integration authorization fields. Use the native template field schema and
+ * a values map; credentials remain write-only.
  */
 export type AuthorizationConfig = legacy.AuthorizationConfig
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy connector template response. Use `IntegrationTemplate`.
  */
 export type ConnectorTemplateResponse = legacy.ConnectorTemplateResponse
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy integration create input. Use `TemplateConfigCreateInput`; fields differ.
  */
 export type CreateIntegrationOptions = legacy.CreateIntegrationOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy integration delete input. Pass the config UUID to `integrationAdmin.delete`.
  */
 export type DeleteIntegrationOptions = legacy.DeleteIntegrationOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy integration template read input. Pass the template UUID to
+ * `integrationTemplates.get`.
  */
 export type GetIntegrationTemplateOptions = legacy.GetIntegrationTemplateOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy template list input. Use `PageOptions` with `integrationTemplates.list`.
  */
 export type ListIntegrationTemplatesOptions = legacy.ListIntegrationTemplatesOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy template field. Use `IntegrationFieldSchema`; the native union is richer.
  */
 export type TemplateField = legacy.TemplateField
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy test response. Use `ConnectionTestResult`.
  */
 export type TestConnectionResponse = legacy.TestConnectionResponse
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy stored-config test input. Pass the config UUID to `integrationAdmin.testConfig`.
  */
 export type TestIntegrationByIdOptions = legacy.TestIntegrationByIdOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy credential test input. Use `TestCredentialsInput`; payload fields differ.
  */
 export type TestIntegrationOptions = legacy.TestIntegrationOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy integration update input. Use `TemplateConfigUpdateInput`; omitted values
+ * preserve stored credentials.
  */
 export type UpdateIntegrationOptions = legacy.UpdateIntegrationOptions
 
@@ -703,169 +730,172 @@ export type UpdateIntegrationOptions = legacy.UpdateIntegrationOptions
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * The Agent SDK has not been ported to the new family.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.agents.create` instead. It accepts native Function UUIDs and returns `AgentDefinition`.
  */
 export const createAgentMitra = legacy.createAgentMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * The Agent SDK has not been ported to the new family.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.agents.get` instead. The native response does not use the legacy BFF envelope.
  */
 export const readAgentMitra = legacy.readAgentMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * The Agent SDK has not been ported to the new family.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.agents.list` instead. It returns a native page.
  */
 export const listAgentsMitra = legacy.listAgentsMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * The Agent SDK has not been ported to the new family.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.agents.update` instead. Its input is a complete native replacement, including the
+ * complete Function ID list.
  */
 export const updateAgentMitra = legacy.updateAgentMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * The Agent SDK has not been ported to the new family.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.agents.delete` instead. It returns no legacy response envelope.
  */
 export const deleteAgentMitra = legacy.deleteAgentMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * The Agent SDK has not been ported to the new family.
- * There is no replacement yet; this API is still supported.
+ * Use the explicit `mitra.agentTasks.create` or `get` method. The legacy action multiplexer and
+ * session transport are not preserved by the native HTTP API.
  */
 export const getAgentTaskMitra = legacy.getAgentTaskMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * The Agent SDK has not been ported to the new family.
- * There is no replacement yet; this API is still supported.
+ * Use the explicit `mitra.agentTasks.list`, `rename`, `archive`, `sendInput`, or `listMessages`
+ * method. Live session streaming is not part of these HTTP methods.
  */
 export const manageAgentChatMitra = legacy.manageAgentChatMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * The Agent SDK has not been ported to the new family.
- * There is no replacement yet; this API is still supported.
+ * Use the explicit methods on `mitra.agentCredentials`. OAuth and device authorization are
+ * separate native calls rather than one action multiplexer.
  */
 export const manageAgentCredentialMitra = legacy.manageAgentCredentialMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * The Agent SDK has not been ported to the new family.
- * There is no replacement yet; this API is still supported.
+ * Use the explicit methods on `mitra.agentConnections`. The native API returns provider status
+ * metadata and keeps credential values write-only.
  */
 export const manageAgentConnectionMitra = legacy.manageAgentConnectionMitra
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy business Agent. Use `AgentDefinition`; Function link field names differ.
  */
 export type Agent = legacy.Agent
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy Copilot task/chat summary. Use `AgentTask` from `mitra.agentTasks.list` or
+ * `get`; the native DTO uses `title` instead of `name` and includes ownership metadata.
  */
 export type AgentChat = legacy.AgentChat
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy Agent connection preserved under its original name. Use
+ * `CoreAgentConnection` with `mitra.agentConnections`; credential metadata differs.
  */
 export type AgentConnection = legacy.AgentConnection
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy provider credential status. Use `CredentialStatus` from
+ * `mitra.agentCredentials.list`; native provider values use `CopilotProvider` casing.
  */
 export type AgentCredentialStatus = legacy.AgentCredentialStatus
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Use the `delta` payload from `CoreAgentTaskSessionEventMap` through
+ * `mitra.agentTasks.session()`.
  */
 export type AgentDeltaEvent = legacy.AgentDeltaEvent
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Use the `error` payload from `CoreAgentTaskSessionEventMap`.
  */
 export type AgentErrorEvent = legacy.AgentErrorEvent
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy live-session message preserved under its original name. Use
+ * `CoreAgentMessage` for persisted messages from `mitra.agentTasks.listMessages`.
  */
 export type AgentMessage = legacy.AgentMessage
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy credential model preserved under its original name. Use `CoreAgentModel` for
+ * models returned by `mitra.agentCredentials.listModels` or `mitra.agents.listModels`.
  */
 export type AgentModel = legacy.AgentModel
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy lowercase provider name. Use `CopilotProvider`; native values are uppercase
+ * and may include providers added by the service.
  */
 export type AgentProvider = legacy.AgentProvider
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Use the `queueChange` payload from `CoreAgentTaskSessionEventMap`.
  */
 export type AgentQueueChangeEvent = legacy.AgentQueueChangeEvent
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Use `AgentTaskEvent` from the native session `raw` event.
  */
 export type AgentRawEvent = legacy.AgentRawEvent
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Use the `statusChange` payload from `CoreAgentTaskSessionEventMap`.
  */
 export type AgentStatusChangeEvent = legacy.AgentStatusChangeEvent
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Use the `taskCreated` payload from `CoreAgentTaskSessionEventMap`.
  */
 export type AgentTaskCreatedEvent = legacy.AgentTaskCreatedEvent
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Use `CoreAgentTaskSessionEventMap`.
  */
 export type AgentTaskEventMap = legacy.AgentTaskEventMap
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Use `keyof CoreAgentTaskSessionEventMap`.
  */
 export type AgentTaskEventName = legacy.AgentTaskEventName
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Use `CoreAgentTaskSession` from `mitra.agentTasks.session()`.
  */
 export type AgentTaskSession = legacy.AgentTaskSession
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Use `CoreAgentTaskSessionStatus`.
  */
 export type AgentTaskStatus = legacy.AgentTaskStatus
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Use `AgentSessionTransport`. The Functions adapter supports `auto` and `http`.
  */
 export type AgentTaskTransport = legacy.AgentTaskTransport
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Use `CoreAgentTimelineItem`.
  */
 export type AgentTimelineItem = legacy.AgentTimelineItem
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Use `CoreAgentToolEvent`.
  */
 export type AgentToolEvent = legacy.AgentToolEvent
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Use `AgentTurnResult` from `sendAndWait()`.
  */
 export type AgentTurnEndEvent = legacy.AgentTurnEndEvent
 
@@ -875,157 +905,174 @@ export type AgentTurnEndEvent = legacy.AgentTurnEndEvent
 export type AgentType = legacy.AgentType
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy provider OAuth-start response. Use `OAuthStartResult` from
+ * `agentCredentials.startOAuth` or `agentConnections.startOAuth`.
  */
 export type AuthAgentCredentialResult = legacy.AuthAgentCredentialResult
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy chat action union. Use explicit `agentTasks.list`, `rename`, and `archive`
+ * methods instead of an action discriminator.
  */
 export type ChatManageAction = legacy.ChatManageAction
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy OAuth or device-flow completion response. Use `AuthenticationResult`.
  */
 export type ConnectAgentCredentialResult = legacy.ConnectAgentCredentialResult
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy Agent create input. Use `AgentInput`; `serverFunctionIds` becomes `functionIds`.
  */
 export type CreateAgentOptions = legacy.CreateAgentOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy Agent create response. Use `AgentDefinition`.
  */
 export type CreateAgentResponse = legacy.CreateAgentResponse
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy credential action union. Use the explicit methods on
+ * `mitra.agentCredentials` instead.
  */
 export type CredentialAction = legacy.CredentialAction
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy chat archive response. `agentTasks.archive(taskId)` performs the same native
+ * operation and resolves without a response body.
  */
 export type DeleteAgentChatResult = legacy.DeleteAgentChatResult
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy Agent delete input. Pass the Agent UUID directly to `mitra.agents.delete`;
+ * native app scope comes from the runtime token and client configuration.
  */
 export type DeleteAgentOptions = legacy.DeleteAgentOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy Agent delete response. The native delete has no response body.
  */
 export type DeleteAgentResponse = legacy.DeleteAgentResponse
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy device authorization response. Use `DeviceAuthorization`.
  */
 export type DeviceAuthAgentCredentialResult = legacy.DeviceAuthAgentCredentialResult
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy task-create input. Use `AgentTaskCreateInput`.
  */
 export type GetAgentTaskCreateOptions = legacy.GetAgentTaskCreateOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy task-open input. Pass the task UUID to `agentTasks.get`.
  */
 export type GetAgentTaskOpenOptions = legacy.GetAgentTaskOpenOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy create/open action union. Use explicit `agentTasks.create` or `get` methods.
  */
 export type GetAgentTaskOptions = legacy.GetAgentTaskOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy connection-list envelope. Use `CoreAgentConnection[]`.
  */
 export type ListAgentConnectionsResult = legacy.ListAgentConnectionsResult
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy model-list envelope. Use `CoreAgentModel[]`.
  */
 export type ListAgentModelsResult = legacy.ListAgentModelsResult
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy provider-status envelope. Use `CredentialStatus[]` returned directly by
+ * `mitra.agentCredentials.list`.
  */
 export type ListAgentProvidersResult = legacy.ListAgentProvidersResult
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy Agent list input. Use `PageOptions` with `mitra.agents.list`; native app scope
+ * comes from the runtime token and client configuration.
  */
 export type ListAgentsOptions = legacy.ListAgentsOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy Agent list response. Use `Page<AgentDefinition>`.
  */
 export type ListAgentsResponse = legacy.ListAgentsResponse
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy chat archive action input. Pass `taskId` to `mitra.agentTasks.archive`;
+ * native app scope is implicit and the method has no action discriminator.
  */
 export type ManageAgentChatDeleteOptions = legacy.ManageAgentChatDeleteOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy chat list action input. Use `AgentTaskListOptions` with
+ * `mitra.agentTasks.list`; native pagination returns `Page<AgentTask>`.
  */
 export type ManageAgentChatListOptions = legacy.ManageAgentChatListOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy chat action union. Use explicit `mitra.agentTasks.list`, `rename`, or
+ * `archive` calls; their inputs and return types are operation-specific.
  */
 export type ManageAgentChatOptions = legacy.ManageAgentChatOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy chat rename action input. Call `mitra.agentTasks.rename(taskId, title)`;
+ * native app scope is implicit and `title` replaces `name`.
  */
 export type ManageAgentChatRenameOptions = legacy.ManageAgentChatRenameOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy connection action union. Use explicit methods on `mitra.agentConnections`,
+ * including `list`, `create`, `delete`, `saveApiKey`, OAuth, and device authorization methods.
  */
 export type ManageAgentConnectionOptions = legacy.ManageAgentConnectionOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy credential action union. Use explicit methods on `agentCredentials`.
  */
 export type ManageAgentCredentialOptions = legacy.ManageAgentCredentialOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy client-side queued prompt. Native `agentTasks.sendInput` sends immediately
+ * through the HTTP channel and does not expose this queue item.
  */
 export type QueuedItem = legacy.QueuedItem
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy Agent read input. Pass the Agent UUID directly to `mitra.agents.get`; native
+ * app scope comes from the runtime token and client configuration.
  */
 export type ReadAgentOptions = legacy.ReadAgentOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy Agent read response. Use `AgentDefinition`.
  */
 export type ReadAgentResponse = legacy.ReadAgentResponse
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy chat rename response `{ taskId, name }`. Use the `AgentTask` returned by
+ * `mitra.agentTasks.rename`, whose field is named `title`.
  */
 export type RenameAgentChatResult = legacy.RenameAgentChatResult
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy live-session send options. Use an `AgentTaskInput` message with
+ * `mitra.agentTasks.sendInput`; the native input carries content, model, and reasoning options.
  */
 export type SendOptions = legacy.SendOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy Agent update input. Use `AgentInput`; the native method is a complete
+ * replacement and uses `functionIds`.
  */
 export type UpdateAgentOptions = legacy.UpdateAgentOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy Agent update response. Use `AgentDefinition`.
  */
 export type UpdateAgentResponse = legacy.UpdateAgentResponse
 
@@ -1033,13 +1080,15 @@ export type UpdateAgentResponse = legacy.UpdateAgentResponse
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.members.invite` instead. The native method receives the app UUID explicitly and
+ * returns no legacy BFF envelope. The default runtime token has MEMBER_WRITE but not MEMBER_READ.
  */
 export const inviteUserMitra = legacy.inviteUserMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.members.unsubscribe` instead. It receives native app and user UUIDs and returns no
+ * legacy BFF envelope.
  */
 export const unsubscribeUserMitra = legacy.unsubscribeUserMitra
 
@@ -1049,17 +1098,17 @@ export const unsubscribeUserMitra = legacy.unsubscribeUserMitra
 export type InviteUserOptions = legacy.InviteUserOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy invite response. `members.invite` has no response body.
  */
 export type InviteUserResult = legacy.InviteUserResult
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy unsubscribe input. Pass native app and user UUIDs to `members.unsubscribe`.
  */
 export type UnsubscribeUserOptions = legacy.UnsubscribeUserOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy unsubscribe response. `members.unsubscribe` has no response body.
  */
 export type UnsubscribeUserResult = legacy.UnsubscribeUserResult
 
@@ -1067,32 +1116,36 @@ export type UnsubscribeUserResult = legacy.UnsubscribeUserResult
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.currentApp.build` for a preview build or `publish` for a published build. These use
+ * the Code Studio deployment lifecycle rather than the legacy direct S3 payload.
  */
 export const deployToS3Mitra = legacy.deployToS3Mitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * There is no replacement yet; this API is still supported.
+ * Use `mitra.currentApp.getDeploy` instead. It polls by stable deploy UUID and returns `AppDeploy`.
  */
 export const getDeployStatusMitra = legacy.getDeployStatusMitra
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy direct-S3 deploy input. Use `AppPublishOptions` with `currentApp.publish`; the
+ * deployment model differs.
  */
 export type DeployToS3Options = legacy.DeployToS3Options
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy direct-S3 deploy response. Use `AppDefinition` from publish or `AppDeploy`
+ * from preview build.
  */
 export type DeployToS3Response = legacy.DeployToS3Response
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy deploy-status input. Pass app and deploy UUIDs to `apps.getDeploy`, or only
+ * the deploy UUID to `currentApp.getDeploy`.
  */
 export type GetDeployStatusOptions = legacy.GetDeployStatusOptions
 
 /**
- * @deprecated Legacy `mitra-sdk` type. There is no replacement yet; this API is still supported.
+ * @deprecated Legacy deploy-status response. Use `AppDeploy`.
  */
 export type GetDeployStatusResponse = legacy.GetDeployStatusResponse

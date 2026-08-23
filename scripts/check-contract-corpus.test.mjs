@@ -6,29 +6,46 @@ import { canonicalSourceUrl, validateSourceManifest } from "./check-contract-cor
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const manifest = JSON.parse(
-  readFileSync(join(root, "contracts", "sdk-core-v0.1.0.manifest.json"), "utf8"),
+  readFileSync(join(root, "contracts", "sdk-core-v0.2.0-beta.0.manifest.json"), "utf8"),
 )
 
 describe("sdk-core canonical source provenance", () => {
-  it("derives the immutable public source URL from the validated manifest", () => {
-    expect(canonicalSourceUrl(manifest)).toBe(
+  it("accepts the release manifest locally while its immutable source is pending", () => {
+    expect(() => validateSourceManifest(manifest, { requirePinnedSource: false })).not.toThrow()
+    expect(() => canonicalSourceUrl(manifest)).toThrow("immutable source is not pinned yet")
+  })
+
+  it("derives the immutable public source URL from a full commit SHA", () => {
+    const pinned = {
+      ...manifest,
+      source: {
+        repository: "https://github.com/mitralab-dev/mitra-core-sdk",
+        commit: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        path: "contracts/v0.2.0-beta.0/sdk-parity.json",
+      },
+    }
+
+    expect(canonicalSourceUrl(pinned)).toBe(
       "https://raw.githubusercontent.com/mitralab-dev/mitra-core-sdk/" +
-        "b513454d0d1f7344a4656cd9c0e1e32530c5ea90/contracts/v0.1.0/sdk-parity.json",
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/contracts/v0.2.0-beta.0/sdk-parity.json",
     )
   })
 
   it.each([
     ["repository", "https://github.com/example/mitra-core-sdk"],
-    ["path", "contracts/v0.1.0/other.json"],
-    ["commit", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
+    ["path", "contracts/v0.2.0-beta.0/other.json"],
+    ["commit", "not-a-full-commit"],
   ])("rejects a false source %s", (field, value) => {
     const mutated = {
       ...manifest,
-      source: { ...manifest.source, [field]: value },
+      source: {
+        repository: "https://github.com/mitralab-dev/mitra-core-sdk",
+        commit: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        path: "contracts/v0.2.0-beta.0/sdk-parity.json",
+        [field]: value,
+      },
     }
 
-    expect(() => validateSourceManifest(mutated)).toThrow(
-      `sdk-core source ${field} must be exactly`,
-    )
+    expect(() => validateSourceManifest(mutated)).toThrow()
   })
 })

@@ -2,26 +2,28 @@ import type { QueryParamValue, Transport, TransportRequestOptions } from "@mitra
 import { MitraApiError } from "./errors"
 import type { Fetch } from "./types"
 
-interface HttpClientConfig {
+interface BaseHttpClientConfig {
   baseUrl: string
-  accessToken: string
-  appId: string
   timeoutMs: number
   fetch: Fetch
 }
+
+type HttpClientConfig = BaseHttpClientConfig &
+  (
+    | { authentication: "bearer"; accessToken: string; appId: string }
+    | { authentication: "anonymous" }
+  )
 
 type ErrorPayload = Record<string, unknown>
 
 const bearerCredentialPattern = /(\bBearer\s+)\S+/gi
 
-function redactText(value: string, accessToken: string): string {
-  return value
-    .replace(bearerCredentialPattern, "$1[REDACTED]")
-    .split(accessToken)
-    .join("[REDACTED]")
+export function redactText(value: string, accessToken?: string): string {
+  const bearerRedacted = value.replace(bearerCredentialPattern, "$1[REDACTED]")
+  return accessToken ? bearerRedacted.split(accessToken).join("[REDACTED]") : bearerRedacted
 }
 
-function redactDetails(value: unknown, accessToken: string): unknown {
+function redactDetails(value: unknown, accessToken?: string): unknown {
   if (typeof value === "string") return redactText(value, accessToken)
   if (Array.isArray(value)) return value.map((item) => redactDetails(item, accessToken))
   if (value && typeof value === "object") {
@@ -45,12 +47,39 @@ function optionalString(value: unknown): string | undefined {
 function appendQueryParameters(url: URL, params: Record<string, QueryParamValue>): void {
   for (const [key, value] of Object.entries(params)) {
     if (value === undefined) continue
-    url.searchParams.append(key, typeof value === "string" ? value : value.toString())
+    const values = Array.isArray(value) ? value : [value]
+    for (const item of values) {
+      url.searchParams.append(key, typeof item === "string" ? item : item.toString())
+    }
+  }
+}
+
+function createRequestHeaders(
+  hasBody: boolean,
+  customHeaders: Record<string, string> | undefined,
+  authentication: { type: "bearer"; accessToken: string; appId: string } | { type: "anonymous" },
+): Record<string, string> {
+  const safeCustomHeaders = Object.fromEntries(
+    Object.entries(customHeaders ?? {}).filter(
+      ([name]) => !["authorization", "x-app-id"].includes(name.toLowerCase()),
+    ),
+  )
+  return {
+    Accept: "application/json",
+    ...(hasBody ? { "Content-Type": "application/json" } : {}),
+    ...safeCustomHeaders,
+    ...(authentication.type === "bearer"
+      ? {
+          Authorization: `Bearer ${authentication.accessToken}`,
+          "X-App-Id": authentication.appId,
+        }
+      : {}),
   }
 }
 
 async function parsePayload(response: Response): Promise<unknown> {
   const text = await response.text()
+  if (response.ok && !text.trim()) return undefined
   try {
     return JSON.parse(text)
   } catch {
@@ -64,7 +93,11 @@ async function parsePayload(response: Response): Promise<unknown> {
   }
 }
 
-function createApiError(response: Response, payload: unknown, accessToken: string): MitraApiError {
+export function createApiError(
+  response: Response,
+  payload: unknown,
+  accessToken?: string,
+): MitraApiError {
   const errorPayload: ErrorPayload =
     payload && typeof payload === "object" ? (payload as ErrorPayload) : {}
   const rawMessage = optionalString(errorPayload.message)
@@ -94,17 +127,19 @@ function createApiError(response: Response, payload: unknown, accessToken: strin
 }
 
 export class HttpClient implements Transport {
-  readonly #accessToken: string
+  readonly #authentication: HttpClientConfig["authentication"]
+  readonly #accessToken: string | undefined
 
   private readonly baseUrl: string
-  private readonly appId: string
+  private readonly appId: string | undefined
   private readonly timeoutMs: number
   private readonly fetchImplementation: Fetch
 
   constructor(config: HttpClientConfig) {
     this.baseUrl = config.baseUrl
-    this.#accessToken = config.accessToken
-    this.appId = config.appId
+    this.#authentication = config.authentication
+    this.#accessToken = config.authentication === "bearer" ? config.accessToken : undefined
+    this.appId = config.authentication === "bearer" ? config.appId : undefined
     this.timeoutMs = config.timeoutMs
     this.fetchImplementation = config.fetch
   }
@@ -116,17 +151,19 @@ export class HttpClient implements Transport {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs)
     const hasBody = options.body !== undefined
+    const authentication =
+      this.#authentication === "bearer"
+        ? {
+            type: "bearer" as const,
+            accessToken: this.#accessToken!,
+            appId: this.appId!,
+          }
+        : { type: "anonymous" as const }
 
     try {
       const response = await this.fetchImplementation(url, {
         method: options.method ?? "GET",
-        headers: {
-          Accept: "application/json",
-          ...(hasBody ? { "Content-Type": "application/json" } : {}),
-          Authorization: `Bearer ${this.#accessToken}`,
-          "X-App-Id": this.appId,
-          ...options.headers,
-        },
+        headers: createRequestHeaders(hasBody, options.headers, authentication),
         ...(hasBody ? { body: JSON.stringify(options.body) } : {}),
         redirect: "manual",
         signal: controller.signal,

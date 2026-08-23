@@ -5,7 +5,8 @@ import { createClient, getProjectsMitra, listRecordsMitra, runQueryMitra } from 
 import type { ListRecordsOptions, MitraConfig, RunQueryOptions } from "../index"
 
 const surface = packageSurface as unknown as Record<string, unknown>
-const legacyValues = Object.keys(legacySdk).sort()
+const legacyBindings = { ...legacySdk }
+const legacyValues = Object.keys(legacyBindings).sort()
 
 describe("legacy surface", () => {
   it("re-exports every runtime export of the pinned legacy package", () => {
@@ -15,7 +16,7 @@ describe("legacy surface", () => {
 
   it("re-exports the legacy bindings themselves, without wrapping them", () => {
     const rebound = legacyValues.filter(
-      (name) => surface[name] !== (legacySdk as unknown as Record<string, unknown>)[name],
+      (name) => surface[name] !== (legacyBindings as unknown as Record<string, unknown>)[name],
     )
 
     expect(rebound).toEqual([])
@@ -41,5 +42,12 @@ describe("legacy surface", () => {
     expect(legacyValues).not.toContain("createClient")
     expect(legacyValues).not.toContain("createClientFromEnvironment")
     expect(surface.createClient).toBe(createClient)
+  })
+
+  it("does not expose browser-only interactions bindings", () => {
+    expect(surface.loginMitra).toBeUndefined()
+    expect(surface.loginWithGoogleMitra).toBeUndefined()
+    expect(surface.loginWithMicrosoftMitra).toBeUndefined()
+    expect(surface.refreshTokenSilently).toBeUndefined()
   })
 })

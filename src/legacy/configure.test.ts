@@ -4,6 +4,7 @@ import type { Fetch, MitraEnvironment } from "../index"
 
 const environment: MitraEnvironment = {
   MITRA_API_URL: "https://runtime.example.com",
+  MITRA_BASE_URL: "https://runtime.example.com/legacy",
   MITRA_PLATFORM_ACCESS_TOKEN: "runtime-token",
   MITRA_APP_ID: "runtime-app",
 }
@@ -34,13 +35,16 @@ afterEach(() => {
 describe("legacy configuration bridge", () => {
   it("configures the legacy SDK from the runtime environment", async () => {
     vi.stubEnv("MITRA_API_URL", environment.MITRA_API_URL!)
+    vi.stubEnv("MITRA_BASE_URL", environment.MITRA_BASE_URL!)
     vi.stubEnv("MITRA_PLATFORM_ACCESS_TOKEN", environment.MITRA_PLATFORM_ACCESS_TOKEN!)
     vi.stubEnv("MITRA_APP_ID", environment.MITRA_APP_ID!)
 
     createClient()
     await getProjectsMitra()
 
-    expect(legacyRequest().url).toBe("https://runtime.example.com/agentAiShortcut/getProjects")
+    expect(legacyRequest().url).toBe(
+      "https://runtime.example.com/legacy/agentAiShortcut/getProjects",
+    )
     expect(legacyRequest().init.headers).toMatchObject({
       Authorization: "Bearer runtime-token",
     })
@@ -51,7 +55,9 @@ describe("legacy configuration bridge", () => {
     createClientFromEnvironment(environment)
     await getProjectsMitra()
 
-    expect(legacyRequest().url).toBe("https://runtime.example.com/agentAiShortcut/getProjects")
+    expect(legacyRequest().url).toBe(
+      "https://runtime.example.com/legacy/agentAiShortcut/getProjects",
+    )
     expect(legacyRequest().init.headers).toMatchObject({
       Authorization: "Bearer runtime-token",
     })
@@ -60,21 +66,25 @@ describe("legacy configuration bridge", () => {
   it("configures the legacy SDK from an explicit client configuration", async () => {
     createClient({
       apiUrl: "https://explicit.example.com/",
+      legacyBaseUrl: "https://explicit.example.com/legacy/",
       accessToken: "explicit-token",
       appId: "explicit-app",
     })
     await getProjectsMitra()
 
-    expect(legacyRequest().url).toBe("https://explicit.example.com/agentAiShortcut/getProjects")
+    expect(legacyRequest().url).toBe(
+      "https://explicit.example.com/legacy/agentAiShortcut/getProjects",
+    )
     expect(legacyRequest().init.headers).toMatchObject({
       Authorization: "Bearer explicit-token",
     })
   })
 
-  it("forwards the API URL without transforming it", async () => {
+  it("falls back to the API URL when no legacy base URL is configured", async () => {
     createClientFromEnvironment({
-      ...environment,
       MITRA_API_URL: "https://gateway.example.com/root",
+      MITRA_PLATFORM_ACCESS_TOKEN: "runtime-token",
+      MITRA_APP_ID: "runtime-app",
     })
     await getProjectsMitra()
 
