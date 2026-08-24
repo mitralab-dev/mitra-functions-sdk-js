@@ -215,8 +215,8 @@ export const getProjectsMitra = legacy.getProjectsMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * Use `mitra.context.getAppContext` instead. The native method composes safe summaries and may
- * return 403 for member data with the default Functions runtime token.
+ * Use `mitra.context.getAppContext` instead. The native method composes safe app-scoped summaries
+ * and returns the native context shape.
  */
 export const getProjectContextMitra = legacy.getProjectContextMitra
 
@@ -441,28 +441,29 @@ export const listTablesMitra = legacy.listTablesMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * Use `mitra.schema.createTable` instead. The native method accepts explicit typed columns and
- * returns no legacy response envelope.
+ * Use `mitra.customQueries.create({ name, sql, isVirtualTable: true, connectionId })` instead.
+ * Map legacy `sqlQuery` to `sql` and `jdbcId` to `connectionId`; the native response uses UUIDs.
  */
 export const createOnlineTableMitra = legacy.createOnlineTableMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * Use `mitra.schema.listTables({ scope: "APP" })` instead. The native response describes schemas,
- * tables, columns, and foreign keys rather than online-table records.
+ * Use `mitra.customQueries.list` and keep entries whose `isVirtualTable` is true. The native page
+ * uses UUIDs and does not include SQL; call `get(id)` when the query definition is required.
  */
 export const listOnlineTablesMitra = legacy.listOnlineTablesMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * Use the focused `mitra.schema.addColumn`, `dropColumn`, or `truncateTable` methods. There is no
- * one-call native replacement for the legacy whole-table update payload.
+ * Use `mitra.customQueries.update(id, { name, sql, isVirtualTable, connectionId })` instead. The
+ * native method identifies the Virtual Table by UUID rather than by name.
  */
 export const updateOnlineTableMitra = legacy.updateOnlineTableMitra
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * Use `mitra.schema.dropTable` instead. It returns no legacy response envelope.
+ * Use `mitra.customQueries.delete(id)` instead. The native method identifies the Virtual Table by
+ * UUID and returns no legacy response envelope.
  */
 export const deleteOnlineTableMitra = legacy.deleteOnlineTableMitra
 
@@ -478,44 +479,46 @@ export type ListTablesOptions = legacy.ListTablesOptions
 export type ListTablesResponse = legacy.ListTablesResponse
 
 /**
- * @deprecated Legacy online-table create input. Use a table name and `ColumnInput[]` with
- * `mitra.schema.createTable`; fields differ.
+ * @deprecated Legacy online-table create input. Use `CustomQueryInput`, mapping `sqlQuery` to
+ * `sql`, `jdbcId` to `connectionId`, and setting `isVirtualTable: true`.
  */
 export type CreateOnlineTableOptions = legacy.CreateOnlineTableOptions
 
 /**
- * @deprecated Legacy online-table create response. `schema.createTable` has no response body.
+ * @deprecated Legacy online-table create response. Use `CustomQueryDefinition`.
  */
 export type CreateOnlineTableResponse = legacy.CreateOnlineTableResponse
 
 /**
- * @deprecated Legacy online-table delete input. Pass the table name to `schema.dropTable`.
+ * @deprecated Legacy online-table delete input. Pass the native query UUID to
+ * `customQueries.delete`.
  */
 export type DeleteOnlineTableOptions = legacy.DeleteOnlineTableOptions
 
 /**
- * @deprecated Legacy online-table delete response. `schema.dropTable` has no response body.
+ * @deprecated Legacy online-table delete response. `customQueries.delete` has no response body.
  */
 export type DeleteOnlineTableResponse = legacy.DeleteOnlineTableResponse
 
 /**
- * @deprecated Legacy online-table list input. Use `CoreListTablesOptions` with APP scope.
+ * @deprecated Legacy online-table list input. Use `PageOptions` with `customQueries.list`.
  */
 export type ListOnlineTablesOptions = legacy.ListOnlineTablesOptions
 
 /**
- * @deprecated Legacy online-table list response. Use `SchemaTables[]`.
+ * @deprecated Legacy online-table list response. Use `Page<CustomQuerySummary>` and filter
+ * `isVirtualTable`.
  */
 export type ListOnlineTablesResponse = legacy.ListOnlineTablesResponse
 
 /**
- * @deprecated Legacy whole-table update input. Use focused `schema` column and truncate methods;
- * there is no one-call native equivalent.
+ * @deprecated Legacy online-table update input. Use `CustomQueryUpdateInput` with the native query
+ * UUID and keep `isVirtualTable: true`.
  */
 export type UpdateOnlineTableOptions = legacy.UpdateOnlineTableOptions
 
 /**
- * @deprecated Legacy whole-table update response. Native schema mutations have no response body.
+ * @deprecated Legacy online-table update response. Use `CustomQueryDefinition`.
  */
 export type UpdateOnlineTableResponse = legacy.UpdateOnlineTableResponse
 
@@ -1116,8 +1119,9 @@ export type UnsubscribeUserResult = legacy.UnsubscribeUserResult
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * Use `mitra.currentApp.build` for a preview build or `publish` for a published build. These use
- * the Code Studio deployment lifecycle rather than the legacy direct S3 payload.
+ * There is no one-call native replacement for the legacy archive upload. Convert the package to a
+ * text file map, call `mitra.currentApp.replaceFiles` or `mergeFiles`, then call `build` for a
+ * preview build or `publish` for a published build.
  */
 export const deployToS3Mitra = legacy.deployToS3Mitra
 
@@ -1128,8 +1132,8 @@ export const deployToS3Mitra = legacy.deployToS3Mitra
 export const getDeployStatusMitra = legacy.getDeployStatusMitra
 
 /**
- * @deprecated Legacy direct-S3 deploy input. Use `AppPublishOptions` with `currentApp.publish`; the
- * deployment model differs.
+ * @deprecated Legacy direct-S3 archive input. Native deployment accepts a text file map through
+ * `currentApp.replaceFiles` or `mergeFiles`, followed by `build` or `publish`.
  */
 export type DeployToS3Options = legacy.DeployToS3Options
 
