@@ -1,11 +1,9 @@
 import type {
   AppDefinition,
-  AppContext,
   AppDeploy,
   AppFiles,
   AppGetOptions,
   AppsModule,
-  ContextModule,
   AppPublishOptions,
   AppUpdateInput,
   AppVersion,
@@ -34,15 +32,6 @@ export interface CurrentAppModule {
   rollback(targetVersionId: string): Promise<AppDefinition>
   listDeploys(options?: PageOptions): Promise<Page<AppDeploy>>
   listVersions(options?: PageOptions): Promise<Page<AppVersion>>
-}
-
-export function createAppScopedContextModule(context: ContextModule, appId: string): ContextModule {
-  return {
-    async getAppContext(requestedAppId) {
-      if (requestedAppId !== undefined) assertCurrentApp(appId, requestedAppId)
-      return context.getAppContext(appId) as Promise<AppContext>
-    },
-  }
 }
 
 function unavailable(operation: string): never {

@@ -1,15 +1,13 @@
 import { MitraConfigurationError } from "./errors"
 import type { Fetch, MitraClientConfig, MitraEnvironment } from "./types"
 
-export const DEFAULT_TIMEOUT_MS = 10_000
-
 export interface ResolvedMitraClientConfig {
   apiUrl: string
   legacyBaseUrl: string
   accessToken: string
   appId: string
   dataSourceId?: string
-  timeoutMs: number
+  timeoutMs?: number
   fetch: Fetch
 }
 
@@ -67,10 +65,10 @@ export function resolveConfig(
     "accessToken",
   )
   const appId = requiredValue(config.appId ?? environment.MITRA_APP_ID, "appId")
-  const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS
+  const timeoutMs = config.timeoutMs
   const fetchImplementation = config.fetch ?? globalThis.fetch
 
-  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+  if (timeoutMs !== undefined && (!Number.isFinite(timeoutMs) || timeoutMs <= 0)) {
     throw new MitraConfigurationError("timeoutMs must be a positive number")
   }
   if (typeof fetchImplementation !== "function") {
@@ -88,7 +86,7 @@ export function resolveConfig(
     accessToken,
     appId,
     ...(dataSourceId === undefined ? {} : { dataSourceId: dataSourceId.trim() }),
-    timeoutMs,
+    ...(timeoutMs === undefined ? {} : { timeoutMs }),
     fetch: fetchImplementation,
   }
 }

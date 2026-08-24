@@ -15,7 +15,7 @@ interface AgentTaskSseEventSourceConfig {
   baseUrl: string
   accessToken: string
   appId: string
-  timeoutMs: number
+  timeoutMs?: number
   fetch: Fetch
   errors: SdkCoreErrorFactory
 }
@@ -100,10 +100,13 @@ export class AgentTaskSseEventSource implements AgentTaskEventSource {
     let disconnected = false
     const abortFromCaller = () => controller.abort(signal?.reason)
     signal?.addEventListener("abort", abortFromCaller, { once: true })
-    const handshakeTimeout = setTimeout(() => {
-      handshakeTimedOut = true
-      controller.abort()
-    }, this.config.timeoutMs)
+    const handshakeTimeout =
+      this.config.timeoutMs === undefined
+        ? undefined
+        : setTimeout(() => {
+            handshakeTimedOut = true
+            controller.abort()
+          }, this.config.timeoutMs)
 
     const disconnect = (error?: unknown) => {
       if (disconnected || intentionallyClosed) return
@@ -126,7 +129,7 @@ export class AgentTaskSseEventSource implements AgentTaskEventSource {
         signal: controller.signal,
       })
     } catch {
-      clearTimeout(handshakeTimeout)
+      if (handshakeTimeout !== undefined) clearTimeout(handshakeTimeout)
       cleanup()
       if (handshakeTimedOut) {
         throw new MitraApiError("Mitra Agent event stream handshake timed out", 0, {
@@ -140,7 +143,7 @@ export class AgentTaskSseEventSource implements AgentTaskEventSource {
         retryable: true,
       })
     }
-    clearTimeout(handshakeTimeout)
+    if (handshakeTimeout !== undefined) clearTimeout(handshakeTimeout)
 
     if (!response.ok) {
       cleanup()

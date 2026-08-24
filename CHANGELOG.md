@@ -19,6 +19,10 @@ published and before this package is released.
 - Add anonymous polling for executions created by the public async Function route.
 - Align the deprecated bridge with the `mitra-sdk` beta.39 version baked into the E2B runtime.
 - Restrict Code Studio operations to the configured runtime app and add a `currentApp` facade.
+- Align stable page and record envelopes with Core 0.2, bind app context to the configured app,
+  and execute Custom Queries without a caller-selected Data Source.
+- Leave request deadlines to the Server Function runtime by default while preserving opt-in
+  `timeoutMs` deadlines.
 - Document runtime authorization gaps and the pending Core 0.2.0-beta.0 release gate.
 
 ## 0.1.0

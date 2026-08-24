@@ -4,7 +4,7 @@ JavaScript and TypeScript SDK for code running inside Mitra Server Functions. It
 
 The SDK uses the short-lived platform access token injected into the function runtime. It does not log in users, persist credentials, refresh tokens, use API keys, or retry requests automatically.
 
-Shared API contracts and modules come from `@mitralab.io/sdk-core`. This package owns only the Server Function runtime adapter: environment configuration, token headers, timeout, credential redaction, redirect refusal, and one-attempt request policy. The core never receives or stores the token.
+Shared API contracts and modules come from `@mitralab.io/sdk-core`. This package owns only the Server Function runtime adapter: environment configuration, token headers, optional request deadlines, credential redaction, redirect refusal, and one-attempt request policy. The core never receives or stores the token.
 
 ## Installation
 
@@ -21,7 +21,7 @@ The SDK reads the canonical runtime variables:
 - `MITRA_API_URL`
 - `MITRA_PLATFORM_ACCESS_TOKEN`
 - `MITRA_APP_ID`
-- `MITRA_DATA_SOURCE_ID`, when already resolved by the runtime
+- `MITRA_DATA_SOURCE_ID`, retained for runtime compatibility when already resolved
 
 The runtime also injects these names for the deprecated reexports:
 
@@ -61,11 +61,13 @@ const mitra = createClient({
 
 ## Initialization
 
-Entity operations use the app identity from the token and `X-App-Id`, so they are available immediately. Custom queries require a data source ID.
+Entity and Custom Query operations use the app identity from the token and `X-App-Id`, so they are
+available immediately. Custom Query execution sends only `parameters`; Data Manager resolves its
+Data Source from the authenticated app.
 
-If `MITRA_DATA_SOURCE_ID` or `dataSourceId` is not configured, call `init()` once before executing
-queries. It resolves the nullable Data Source from Code Studio and is safe to call concurrently.
-Apps without a Data Source initialize normally; only data-scoped modules reject when used.
+`init()` and the optional `dataSourceId` configuration remain available for source compatibility.
+When no Data Source is configured, `init()` resolves the nullable value from Code Studio and is
+safe to call concurrently, but native Queries and Entities do not depend on it.
 
 ```typescript
 const mitra = createClient()
@@ -96,8 +98,8 @@ type Task = {
 }
 
 const tasks = mitra.entities.getTable<Task>("Task")
-const recent = await tasks.list({ sort: "-created_at", limit: 20 })
-const pending = await tasks.filter({ status: "pending" })
+const { data: recent } = await tasks.list({ sort: "-created_at", limit: 20 })
+const { data: pending } = await tasks.filter({ status: "pending" })
 const created = await tasks.create({ title: "Review order" })
 await tasks.update(created.id, { status: "done" })
 await tasks.delete(created.id)
@@ -110,7 +112,6 @@ Available methods are `list`, `filter`, `get`, `create`, `bulkCreate`, `update`,
 ### Custom queries
 
 ```typescript
-await mitra.init()
 const result = await mitra.queries.execute("5df41c69-2a74-4db6-9cca-4af2b473941f", {
   customerId: "customer-id",
 })
@@ -218,11 +219,11 @@ input to `POST /inputs`. Both calls use the fixed runtime token in `Authorizatio
 `X-App-Id`; credentials are never placed in the URL. `transport: "auto"` and `"http"` use this
 channel, while `"websocket"` rejects locally.
 
-The configured request timeout applies only while waiting for the SSE response headers. Once the
-handshake succeeds, the body remains open until the session closes, its abort signal fires, or the
-server disconnects. The parser ignores `hello` and `ping` keepalives and forwards `message` events
-to the Core session manager. Core performs one reconnect and reconciles persisted messages after an
-unexpected disconnect.
+When `timeoutMs` is configured, it applies only while waiting for the SSE response headers. Once
+the handshake succeeds, the body remains open until the session closes, its abort signal fires, or
+the server disconnects. The parser ignores `hello` and `ping` keepalives and forwards `message`
+events to the Core session manager. Core performs one reconnect and reconciles persisted messages
+after an unexpected disconnect.
 
 ### App-scoped Code Studio access
 
@@ -276,17 +277,17 @@ context for protected service requests and must not be used by a backend as the 
 boundary.
 
 Against the current `origin/alpha` service and IAM policies, 106 of the 120 MCP capabilities
-are usable or authorizable from an app-scoped Server Function. The remaining capabilities have
-these known constraints:
+are usable or authorizable from an app-scoped Server Function. Deploying Data Manager #233 with
+this SDK enables the three `dataSources.bulk*` capabilities and raises that total to 109. After
+that coordinated rollout, the remaining capabilities have these known constraints:
 
-| Capability                                                     | Runtime behavior                                            | Reason                                                                                                                                    |
-| -------------------------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Member reads, including `members.list()` and app context users | `403 INSUFFICIENT_PERMISSIONS`                              | `MEMBER_READ` is deliberately absent from the SF token policy.                                                                            |
-| Function secret list/create/delete                             | `403 INSUFFICIENT_PERMISSIONS`                              | `FUNCTION_SECRET_READ`, `FUNCTION_SECRET_WRITE`, and `FUNCTION_SECRET_DELETE` are absent from the SF token policy.                        |
-| Data Source bulk create/update/delete                          | `403 INSUFFICIENT_PERMISSIONS`                              | Data Manager checks legacy `DATASOURCE_*` names while IAM grants `DATA_SOURCE_*`. This is a service naming drift, not an SDK grant issue. |
-| Agent runtime operations                                       | Configuration or service rejection without an agent context | The runtime must inject or otherwise provide the applicable `agent_id`.                                                                   |
-| `apps.list()` and `apps.create()`                              | Local `MitraConfigurationError`                             | Tenant-level app collection operations are not applicable to an app-scoped runtime.                                                       |
-| `messenger.notify()`                                           | Depends on the authenticated user's channel                 | The call is authorized, but delivery requires a configured notification channel.                                                          |
+| Capability                            | Runtime behavior                                            | Reason                                                                                                             |
+| ------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Member reads through `members.list()` | `403 INSUFFICIENT_PERMISSIONS`                              | `MEMBER_READ` is deliberately absent from the SF token policy. App context excludes members.                       |
+| Function secret list/create/delete    | `403 INSUFFICIENT_PERMISSIONS`                              | `FUNCTION_SECRET_READ`, `FUNCTION_SECRET_WRITE`, and `FUNCTION_SECRET_DELETE` are absent from the SF token policy. |
+| Agent runtime operations              | Configuration or service rejection without an agent context | The runtime must inject or otherwise provide the applicable `agent_id`.                                            |
+| `apps.list()` and `apps.create()`     | Local `MitraConfigurationError`                             | Tenant-level app collection operations are not applicable to an app-scoped runtime.                                |
+| `messenger.notify()`                  | Depends on the authenticated user's channel                 | The call is authorized, but delivery requires a configured notification channel.                                   |
 
 The methods remain part of the typed API so clients with a different authorized token can use
 the shared contract. This SDK does not broaden IAM permissions or retry a rejected operation.
@@ -315,8 +316,10 @@ only. The SDK still makes one attempt and never retries a request automatically.
 The Python package uses idiomatic specialized names for local failures. JavaScript `REQUEST_TIMEOUT` and `NETWORK_ERROR` map to Python `MitraNetworkError`, while JavaScript `INVALID_RESPONSE` maps to Python `MitraResponseError`. API responses use `MitraApiError` in both packages.
 
 Every protected request sends `Authorization: Bearer <token>` and `X-App-Id`. Public Function
-requests send neither header. The default timeout is 10 seconds. Requests are never retried
-automatically, which avoids replaying writes with unknown idempotency.
+requests send neither header. Requests have no adapter-level deadline by default, so normal
+long-running platform operations remain governed by the Server Function runtime. Set `timeoutMs`
+to opt into a per-request deadline. Requests are never retried automatically, which avoids
+replaying writes with unknown idempotency.
 
 The access token is redacted from API error messages and error details.
 

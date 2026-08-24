@@ -11,7 +11,6 @@ import {
 } from "@mitralab.io/sdk-core"
 import { AgentTaskSseEventSource } from "./agent-task-sse"
 import {
-  createAppScopedContextModule,
   createAppScopedAppsModule,
   type AppScopedAppsModule,
   type CurrentAppModule,
@@ -104,7 +103,7 @@ class DefaultMitraClient implements MitraClient {
         authentication: "bearer",
         accessToken: config.accessToken,
         appId: config.appId,
-        timeoutMs: config.timeoutMs,
+        ...(config.timeoutMs === undefined ? {} : { timeoutMs: config.timeoutMs }),
         fetch: config.fetch,
       })
 
@@ -120,11 +119,10 @@ class DefaultMitraClient implements MitraClient {
         publicFunctions: new HttpClient({
           baseUrl: `${config.apiUrl}/functions`,
           authentication: "anonymous",
-          timeoutMs: config.timeoutMs,
+          ...(config.timeoutMs === undefined ? {} : { timeoutMs: config.timeoutMs }),
           fetch: config.fetch,
         }),
       },
-      getDataSourceId: () => this.#dataSourceId,
       getAppId: () => this.#appId,
       functions: { executeInvocationType: "sync", emptyInput: "empty-object" },
       errors: coreErrors,
@@ -141,7 +139,7 @@ class DefaultMitraClient implements MitraClient {
         baseUrl: `${config.apiUrl}/copilot`,
         accessToken: config.accessToken,
         appId: config.appId,
-        timeoutMs: config.timeoutMs,
+        ...(config.timeoutMs === undefined ? {} : { timeoutMs: config.timeoutMs }),
         fetch: config.fetch,
         errors: coreErrors,
       }),
@@ -158,7 +156,7 @@ class DefaultMitraClient implements MitraClient {
     })
     this.apps = appModules.apps
     this.auth = core.auth
-    this.context = createAppScopedContextModule(core.context, this.#appId)
+    this.context = core.context
     this.currentApp = appModules.currentApp
     this.customQueries = core.customQueries
     this.dataSources = core.dataSources

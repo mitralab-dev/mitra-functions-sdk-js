@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
-import type { AppDefinition, AppDeploy, AppsModule, ContextModule } from "@mitralab.io/sdk-core"
-import { createAppScopedAppsModule, createAppScopedContextModule } from "./app-scoped-apps"
+import type { AppDefinition, AppDeploy, AppsModule } from "@mitralab.io/sdk-core"
+import { createAppScopedAppsModule } from "./app-scoped-apps"
 
 const app = {
   id: "app-1",
@@ -35,7 +35,10 @@ const deploy = {
   finishedAt: null,
   createdAt: "2026-01-01T00:00:00Z",
 } satisfies AppDeploy
-const page = { content: [], totalElements: 0 }
+const page = {
+  content: [],
+  page: { size: 20, totalElements: 0, totalPages: 0, number: 0 },
+}
 
 function appsDelegate(): AppsModule {
   return {
@@ -84,19 +87,5 @@ describe("current-app facade", () => {
     expect(delegate.publish).toHaveBeenCalledWith("app-1", { externalAccess: true })
     expect(delegate.listDeploys).toHaveBeenCalledWith("app-1", { page: 1 })
     expect(delegate.listVersions).toHaveBeenCalledWith("app-1", { page: 2 })
-  })
-
-  it("uses the configured app when context omits an app id", async () => {
-    const getAppContext = vi.fn<ContextModule["getAppContext"]>(
-      async (appId) =>
-        ({
-          appId: appId!,
-        }) as Awaited<ReturnType<ContextModule["getAppContext"]>>,
-    )
-    const context = createAppScopedContextModule({ getAppContext }, "app-1")
-
-    await context.getAppContext()
-
-    expect(getAppContext).toHaveBeenCalledWith("app-1")
   })
 })

@@ -37,6 +37,38 @@ function fragmentedSse(chunks: string[]): Response {
 }
 
 describe("AgentTaskSseEventSource", () => {
+  it("does not impose a handshake deadline unless one is configured", async () => {
+    vi.useFakeTimers()
+    const fetch = vi.fn<Fetch>(
+      (_input, init) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => reject(init.signal?.reason))
+        }),
+    )
+    const eventSource = new AgentTaskSseEventSource({
+      baseUrl: config.baseUrl,
+      accessToken: config.accessToken,
+      appId: config.appId,
+      errors,
+      fetch,
+    })
+    const caller = new AbortController()
+    const opening = eventSource.open(
+      "task-1",
+      { onEvent: vi.fn(), onDisconnect: vi.fn() },
+      caller.signal,
+    )
+
+    await vi.advanceTimersByTimeAsync(60_000)
+
+    expect(fetch.mock.calls[0]?.[1]?.signal?.aborted).toBe(false)
+    const reason = new Error("caller aborted")
+    const assertion = expect(opening).rejects.toBe(reason)
+    caller.abort(reason)
+    await assertion
+    vi.useRealTimers()
+  })
+
   it("rejects an explicitly requested WebSocket transport", async () => {
     const fetch = vi.fn<Fetch>()
 

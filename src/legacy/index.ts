@@ -259,7 +259,7 @@ export type CreateProjectOptions = legacy.CreateProjectOptions
 export type CreateProjectResponse = legacy.CreateProjectResponse
 
 /**
- * @deprecated Legacy project context input. Use `AppGetOptions` or `context.getAppContext(appId)`.
+ * @deprecated Legacy project context input. Use `AppGetOptions`; native app context comes from `context.getAppContext()`.
  */
 export type GetProjectContextOptions = legacy.GetProjectContextOptions
 

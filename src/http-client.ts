@@ -4,7 +4,7 @@ import type { Fetch } from "./types"
 
 interface BaseHttpClientConfig {
   baseUrl: string
-  timeoutMs: number
+  timeoutMs?: number
   fetch: Fetch
 }
 
@@ -132,7 +132,7 @@ export class HttpClient implements Transport {
 
   private readonly baseUrl: string
   private readonly appId: string | undefined
-  private readonly timeoutMs: number
+  private readonly timeoutMs: number | undefined
   private readonly fetchImplementation: Fetch
 
   constructor(config: HttpClientConfig) {
@@ -148,8 +148,9 @@ export class HttpClient implements Transport {
     const url = new URL(`${this.baseUrl}${path}`)
     appendQueryParameters(url, options.params ?? {})
 
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), this.timeoutMs)
+    const controller = this.timeoutMs === undefined ? undefined : new AbortController()
+    const timeout =
+      controller === undefined ? undefined : setTimeout(() => controller.abort(), this.timeoutMs)
     const hasBody = options.body !== undefined
     const authentication =
       this.#authentication === "bearer"
@@ -166,7 +167,7 @@ export class HttpClient implements Transport {
         headers: createRequestHeaders(hasBody, options.headers, authentication),
         ...(hasBody ? { body: JSON.stringify(options.body) } : {}),
         redirect: "manual",
-        signal: controller.signal,
+        ...(controller === undefined ? {} : { signal: controller.signal }),
       })
 
       if (response.status === 204) return undefined as T
@@ -177,7 +178,7 @@ export class HttpClient implements Transport {
       return payload as T
     } catch (error) {
       if (error instanceof MitraApiError) throw error
-      if (controller.signal.aborted) {
+      if (controller?.signal.aborted) {
         throw new MitraApiError("Mitra request timed out", 0, {
           code: "REQUEST_TIMEOUT",
           retryable: true,
@@ -188,7 +189,7 @@ export class HttpClient implements Transport {
         retryable: true,
       })
     } finally {
-      clearTimeout(timeout)
+      if (timeout !== undefined) clearTimeout(timeout)
     }
   }
 

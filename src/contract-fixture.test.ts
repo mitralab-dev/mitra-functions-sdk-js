@@ -29,7 +29,6 @@ interface HttpAdapterCase {
   operation: "auth.me" | "queries.execute"
   input: {
     id?: string
-    dataSourceId?: string
     parameters?: Record<string, unknown>
   }
   request: ContractRequest
@@ -100,9 +99,6 @@ async function executeCase(testCase: HttpAdapterCase, fetch: Fetch): Promise<unk
     apiUrl: "https://api.mitra.test",
     accessToken: "fixture-token",
     appId: "app-1",
-    ...(testCase.input.dataSourceId === undefined
-      ? {}
-      : { dataSourceId: testCase.input.dataSourceId }),
     timeoutMs: 1,
     fetch,
   })

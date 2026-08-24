@@ -9,6 +9,21 @@ function requestHeaders(fetch: ReturnType<typeof vi.fn<Fetch>>): Record<string, 
 }
 
 describe("transport header boundaries", () => {
+  it("does not impose a request deadline unless one is configured", async () => {
+    const fetch = vi.fn<Fetch>(async () => new Response("{}", { status: 200 }))
+    const client = new HttpClient({
+      baseUrl: "https://api.example.com/iam",
+      authentication: "bearer",
+      accessToken: "runtime-token",
+      appId: "runtime-app",
+      fetch,
+    })
+
+    await client.request("/api/v1/auth/me")
+
+    expect(fetch.mock.calls[0]?.[1]).not.toHaveProperty("signal")
+  })
+
   it("serializes array query parameters as repeated keys", async () => {
     const fetch = vi.fn<Fetch>(async () => new Response("[]", { status: 200 }))
     const client = new HttpClient({

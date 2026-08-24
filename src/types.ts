@@ -21,6 +21,7 @@ export interface MitraClientConfig {
   accessToken?: string
   appId?: string
   dataSourceId?: string
+  /** Optional request deadline. By default, the Functions runtime owns operation time limits. */
   timeoutMs?: number
   fetch?: Fetch
 }

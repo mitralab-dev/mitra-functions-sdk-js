@@ -43,6 +43,18 @@ function requestAt(fetchMock: ReturnType<typeof vi.fn<Fetch>>, index = 0) {
   return { url: String(call[0]), init: call[1] as RequestInit }
 }
 
+function springPage<T>(content: T[], totalElements = content.length) {
+  return {
+    content,
+    page: {
+      size: 20,
+      totalElements,
+      totalPages: totalElements === 0 ? 0 : 1,
+      number: 0,
+    },
+  }
+}
+
 function execution(status = "SUCCESS"): FunctionExecution {
   return {
     id: "execution-1",
@@ -128,7 +140,9 @@ describe("configuration", () => {
         name: "Ada",
         email: "ada@example.com",
         imageUrl: null,
+        planId: "plan-1",
         onboardingCompleted: true,
+        language: "pt-BR",
       }),
     )
 
@@ -175,7 +189,9 @@ describe("configuration", () => {
         name: "Ada",
         email: "ada@example.com",
         imageUrl: null,
+        planId: "plan-1",
         onboardingCompleted: true,
+        language: "pt-BR",
       }),
     )
 
@@ -208,7 +224,9 @@ describe("configuration", () => {
         name: "Ada",
         email: "ada@example.com",
         imageUrl: null,
+        planId: "plan-1",
         onboardingCompleted: true,
+        language: "pt-BR",
       }),
     )
     const environment: MitraEnvironment = {
@@ -344,17 +362,17 @@ describe("initialization", () => {
       "https://api.example.com/code-studio/api/v1/apps/app%2Fone/info",
     )
     expect(JSON.parse(String(requestAt(fetch, 1).init.body))).toEqual({
-      dataSourceId: "resolved-data-source",
       parameters: { active: true },
     })
   })
 
-  it("requires initialization only for queries", async () => {
-    const fetch = mockFetch(json({ data: [], limit: 100, skip: 0, total: 0, hasMore: false }))
+  it("does not require initialization for native data operations", async () => {
+    const records = { data: [], limit: 100, skip: 0, total: 0, hasMore: false }
+    const fetch = mockFetch(json(records), json({ rows: [], affectedRows: null, durationMs: 1 }))
     const client = createClient({ ...configWithoutDataSource, fetch })
 
-    await expect(client.entities.Task!.list()).resolves.toEqual([])
-    await expect(client.queries.execute("query-id")).rejects.toThrow("Call client.init()")
+    await expect(client.entities.Task!.list()).resolves.toEqual(records)
+    await expect(client.queries.execute("query-id")).resolves.toMatchObject({ rows: [] })
   })
 
   it("rejects app info without a data source and allows a later retry", async () => {
@@ -370,13 +388,16 @@ describe("initialization", () => {
     expect(fetch).toHaveBeenCalledTimes(2)
   })
 
-  it("initializes an app without a Data Source and defers the query failure", async () => {
-    const fetch = mockFetch(json({ dataSourceId: null }))
+  it("initializes an app without a Data Source and still executes app-scoped queries", async () => {
+    const fetch = mockFetch(
+      json({ dataSourceId: null }),
+      json({ rows: [], affectedRows: null, durationMs: 1 }),
+    )
     const client = createClient({ ...configWithoutDataSource, fetch })
 
     await expect(client.init()).resolves.toBeUndefined()
-    await expect(client.queries.execute("query-id")).rejects.toThrow(/dataSourceId/i)
-    expect(fetch).toHaveBeenCalledTimes(1)
+    await expect(client.queries.execute("query-id")).resolves.toMatchObject({ rows: [] })
+    expect(JSON.parse(String(requestAt(fetch, 1).init.body))).toEqual({ parameters: {} })
   })
 })
 
@@ -395,10 +416,20 @@ describe("entities", () => {
         skip: 2,
         fields: ["id", "name"],
       }),
-    ).resolves.toEqual([{ id: "1" }])
-    await expect(client.entities.Task!.filter({ status: "open" }, "name", 5)).resolves.toEqual([
-      { id: "2" },
-    ])
+    ).resolves.toEqual({
+      data: [{ id: "1" }],
+      limit: 10,
+      skip: 2,
+      total: 1,
+      hasMore: false,
+    })
+    await expect(client.entities.Task!.filter({ status: "open" }, "name", 5)).resolves.toEqual({
+      data: [{ id: "2" }],
+      limit: 5,
+      skip: 0,
+      total: 1,
+      hasMore: false,
+    })
 
     expect(requestAt(fetch).url).toBe(
       "https://api.example.com/data-manager/api/v1/tables/Order%20items/records?sort=-created_at&limit=10&skip=2&fields=id%2Cname",
@@ -594,7 +625,7 @@ describe("native service transports", () => {
   })
 
   it("uses the Copilot transport with query parameters and runtime headers", async () => {
-    const fetch = mockFetch(json({ content: [], totalElements: 0 }))
+    const fetch = mockFetch(json(springPage([])))
     const client = createClient({ ...config, fetch })
 
     await client.agentTasks.list({ archived: true, agentId: "agent-1", size: 5 })
@@ -643,7 +674,7 @@ describe("native service transports", () => {
         )
       }
       if (url.endsWith("/api/v1/tasks/task-1/messages?size=100&sort=createdAt%2Cdesc")) {
-        return json({ content: [], totalElements: 0 })
+        return json(springPage([]))
       }
       if (url.endsWith("/api/v1/tasks/task-1/inputs") && init?.method === "POST") {
         return new Response(null, { status: 202 })
@@ -688,10 +719,12 @@ describe("native service transports", () => {
   })
 
   it("uses the Messenger transport with a protected request body", async () => {
-    const fetch = mockFetch(new Response(null, { status: 204 }))
+    const fetch = mockFetch(json({ messageId: "message-1" }, 202))
     const client = createClient({ ...config, fetch })
 
-    await client.messenger.notify("Build completed")
+    await expect(client.messenger.notify("Build completed")).resolves.toEqual({
+      messageId: "message-1",
+    })
 
     expect(requestAt(fetch).url).toBe("https://api.example.com/messenger/api/v1/messages/notify")
     expect(requestAt(fetch).init).toMatchObject({
@@ -763,7 +796,7 @@ describe("native service transports", () => {
   })
 
   it("keeps native calls direct to services instead of the legacy BFF", async () => {
-    const fetch = mockFetch(json({ content: [], totalElements: 0 }))
+    const fetch = mockFetch(json(springPage([])))
     const client = createClient({ ...config, fetch })
 
     await client.workflows.list({ page: 1 })
@@ -844,14 +877,23 @@ describe("app-scoped Code Studio access", () => {
     },
   )
 
-  it("rejects a mismatched app context before making a request", async () => {
-    const fetch = mockFetch()
+  it("builds app context from the configured app without accepting a caller app id", async () => {
+    const fetch = mockFetch(
+      json(appDefinition()),
+      json([]),
+      json(springPage([])),
+      json(springPage([])),
+      json({ files: {} }),
+      json({ content: [], totalElements: 0 }),
+      json([]),
+    )
     const client = createClient({ ...config, fetch })
 
-    await expect(client.context.getAppContext("other-app")).rejects.toThrow(
-      "Code Studio access is fixed to app app/one",
-    )
-    expect(fetch).not.toHaveBeenCalled()
+    const context = await client.context.getAppContext()
+
+    expect(context.appId).toBe(config.appId)
+    expect(context).not.toHaveProperty("users")
+    expect(requestAt(fetch).url).toBe("https://api.example.com/code-studio/api/v1/apps/app%2Fone")
   })
 })
 
