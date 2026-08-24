@@ -322,10 +322,8 @@ The access token is redacted from API error messages and error details.
 
 The test suite reads SDK-PARITY-001 version 0.2.0-beta.0 directly from the installed
 `@mitralab.io/sdk-core` package. The `sdk-core-v0.2.0-beta.0` manifest pins the expected package
-version,
-contract path, and SHA-256 digest. Its immutable source commit is intentionally absent while the
-Core release changes have no public commit. The release gate rejects publication until that commit
-is recorded and the installed corpus matches its raw GitHub source byte for byte.
+version, contract path, SHA-256 digest, and immutable source commit. The release gate rejects
+publication unless the installed corpus matches its raw GitHub source byte for byte.
 
 The JavaScript consumer requirement is exactly `httpAdapterCases: all`. Tests
 execute all recorded 404, 503, and timeout cases through the public client and

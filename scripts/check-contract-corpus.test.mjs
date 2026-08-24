@@ -10,9 +10,9 @@ const manifest = JSON.parse(
 )
 
 describe("sdk-core canonical source provenance", () => {
-  it("accepts the release manifest locally while its immutable source is pending", () => {
+  it("accepts the release manifest with its immutable source", () => {
     expect(() => validateSourceManifest(manifest, { requirePinnedSource: false })).not.toThrow()
-    expect(() => canonicalSourceUrl(manifest)).toThrow("immutable source is not pinned yet")
+    expect(() => canonicalSourceUrl(manifest)).not.toThrow()
   })
 
   it("derives the immutable public source URL from a full commit SHA", () => {

@@ -147,7 +147,6 @@ export type {
   OAuthStartResult,
   Page,
   PageOptions,
-  Plan,
   PlanPrice,
   ProviderCredentialStatus,
   ProxyInput,
