@@ -277,9 +277,10 @@ context for protected service requests and must not be used by a backend as the 
 boundary.
 
 Against the current `origin/alpha` service and IAM policies, 106 of the 120 MCP capabilities
-are usable or authorizable from an app-scoped Server Function. Deploying Data Manager #233 with
-this SDK enables the three `dataSources.bulk*` capabilities and raises that total to 109. After
-that coordinated rollout, the remaining capabilities have these known constraints:
+are usable or authorizable from an app-scoped Server Function. Once the Data Manager bulk
+endpoints use the IAM resource names `DATA_SOURCE_WRITE` and `DATA_SOURCE_DELETE`, the three
+`dataSources.bulk*` capabilities raise that total to 109. After that coordinated rollout, the
+remaining capabilities have these known constraints:
 
 | Capability                            | Runtime behavior                                            | Reason                                                                                                             |
 | ------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
