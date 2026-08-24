@@ -141,8 +141,9 @@ export const stopServerFunctionExecutionMitra = legacy.stopServerFunctionExecuti
 
 /**
  * @deprecated Legacy `mitra-sdk` API kept for backward compatibility.
- * Use `mitra.publicFunctions.executeAsync` and `mitra.publicFunctions.getExecution` instead.
- * Both native methods use the direct anonymous Functions API.
+ * Use `mitra.publicFunctions.executeAsync` for fire-and-forget public execution. The direct public
+ * API does not expose anonymous polling; use the authenticated `mitra.functions` module when the
+ * caller needs async status.
  */
 export const executePublicServerFunctionAsyncMitra = legacy.executePublicServerFunctionAsyncMitra
 

@@ -779,22 +779,6 @@ describe("native service transports", () => {
     expect(requestAt(fetch).init.headers).not.toHaveProperty("X-App-Id")
   })
 
-  it("polls public Function executions without protected headers", async () => {
-    const fetch = mockFetch(
-      json({ id: "execution-1", status: "SUCCESS", output: { ok: true }, error: null }),
-    )
-    const client = createClient({ ...config, fetch })
-
-    await client.publicFunctions.getExecution("execution/1")
-
-    expect(requestAt(fetch).url).toBe(
-      "https://api.example.com/functions/public/v1/functions/executions/execution%2F1",
-    )
-    expect(requestAt(fetch).init).toMatchObject({ method: "GET" })
-    expect(requestAt(fetch).init.headers).not.toHaveProperty("Authorization")
-    expect(requestAt(fetch).init.headers).not.toHaveProperty("X-App-Id")
-  })
-
   it("keeps native calls direct to services instead of the legacy BFF", async () => {
     const fetch = mockFetch(json(springPage([])))
     const client = createClient({ ...config, fetch })
