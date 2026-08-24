@@ -271,11 +271,10 @@ The JWT `app_id` claim is the authority for application scope. `X-App-Id` carrie
 context for protected service requests and must not be used by a backend as the authorization
 boundary.
 
-Against the current `origin/alpha` service and IAM policies, 106 of the 120 MCP capabilities
-are usable or authorizable from an app-scoped Server Function. Once the Data Manager bulk
-endpoints use the IAM resource names `DATA_SOURCE_WRITE` and `DATA_SOURCE_DELETE`, the three
-`dataSources.bulk*` capabilities raise that total to 109. After that coordinated rollout, the
-remaining capabilities have these known constraints:
+Against the current `origin/alpha` service and IAM policies, 109 of the 120 MCP capabilities
+are usable or authorizable from an app-scoped Server Function. The `dataSources.bulk*` methods
+compose the existing singular Data Manager endpoints, so they do not require a coordinated
+service rollout. The remaining capabilities have these known constraints:
 
 | Capability                            | Runtime behavior                                            | Reason                                                                                                             |
 | ------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
