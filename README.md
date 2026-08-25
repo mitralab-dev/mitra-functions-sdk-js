@@ -16,22 +16,24 @@ Node.js 18 or newer is required.
 
 ## Runtime integration
 
-The SDK reads the canonical runtime variables:
+The SDK accepts the existing Server Function runtime variables:
+
+- `MITRA_BASE_URL`
+- `MITRA_TOKEN`
+- `MITRA_PROJECT_ID`
+
+It also accepts the canonical aliases:
 
 - `MITRA_API_URL`
 - `MITRA_PLATFORM_ACCESS_TOKEN`
 - `MITRA_APP_ID`
 - `MITRA_DATA_SOURCE_ID`, retained for runtime compatibility when already resolved
 
-The runtime also injects these names for the deprecated reexports:
-
-- `MITRA_BASE_URL`
-- `MITRA_TOKEN`
-- `MITRA_PROJECT_ID`
-
-Native calls require the canonical names and never fall back to the deprecated BFF URL.
-`MITRA_TOKEN` and `MITRA_PLATFORM_ACCESS_TOKEN` contain the same short-lived, app-scoped execution
-token minted by the platform. Neither is a user-defined Function secret.
+When only the existing names are present, the SDK removes a trailing `/legacy` from
+`MITRA_BASE_URL` and calls the owning services from that gateway root. It forwards `MITRA_TOKEN`
+unchanged as the bearer token and uses `MITRA_PROJECT_ID` as the app identifier. It does not
+exchange, refresh, inspect, or alter the token. The deprecated bridge still receives the original
+base URL. Neither token name represents a user-defined Function secret.
 
 ## Quick start
 
@@ -363,8 +365,9 @@ const projects = await listProjectsMitra()
 ```
 
 `createClient()` and `createClientFromEnvironment()` configure the deprecated SDK with
-`MITRA_BASE_URL`, the canonical access token, and the app ID, so legacy code does not read the
-environment itself. Native modules use `MITRA_API_URL` directly and never route through the BFF.
+`MITRA_BASE_URL`, the resolved access token, and the app ID, so legacy code does not read the
+environment itself. Native modules use the canonical API root directly and never route through the
+BFF, even when that root was derived from an existing `MITRA_BASE_URL` value.
 For explicit local configuration, `legacyBaseUrl` selects the deprecated BFF base; it falls back to
 `apiUrl` only when omitted. The deprecated SDK receives `appId` as its `projectId` and accepts the
 access token with or without a `Bearer` prefix.

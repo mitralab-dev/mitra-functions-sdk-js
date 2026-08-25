@@ -155,12 +155,42 @@ describe("configuration", () => {
     })
   })
 
-  it("does not route native calls through deprecated runtime aliases", () => {
-    vi.stubEnv("MITRA_BASE_URL", "https://runtime.example.com")
+  it("uses the existing Server Function environment without routing through the BFF", async () => {
+    vi.stubEnv("MITRA_BASE_URL", "https://runtime.example.com/legacy")
     vi.stubEnv("MITRA_TOKEN", "runtime-token")
     vi.stubEnv("MITRA_PROJECT_ID", "runtime-app")
+    const fetch = mockFetch(
+      json({
+        id: "user-1",
+        tenant: {
+          id: "tenant-1",
+          shortId: "short",
+          legacyId: null,
+          slug: "tenant",
+          clusterType: "SHARED",
+          name: "Tenant",
+          description: null,
+          hexColor: null,
+          icon: null,
+          infraStatus: "READY",
+          active: true,
+        },
+        name: "Ada",
+        email: "ada@example.com",
+        imageUrl: null,
+        planId: "plan-1",
+        onboardingCompleted: true,
+        language: "pt-BR",
+      }),
+    )
 
-    expect(() => createClient()).toThrow("apiUrl is required")
+    await createClient({ fetch }).auth.me()
+
+    expect(requestAt(fetch).url).toBe("https://runtime.example.com/iam/api/v1/auth/me")
+    expect(requestAt(fetch).init.headers).toMatchObject({
+      Authorization: "Bearer runtime-token",
+      "X-App-Id": "runtime-app",
+    })
   })
 
   it("prefers the canonical runtime names over their compatibility aliases", async () => {

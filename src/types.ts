@@ -5,11 +5,11 @@ export interface MitraEnvironment {
   MITRA_PLATFORM_ACCESS_TOKEN?: string
   MITRA_APP_ID?: string
   MITRA_DATA_SOURCE_ID?: string
-  /** Deprecated SDK base URL. Native calls never use it. */
+  /** Existing Server Function base URL. Used to derive the native API root when needed. */
   MITRA_BASE_URL?: string
-  /** Deprecated SDK token. Native calls never use it. */
+  /** Existing app-scoped Server Function token. */
   MITRA_TOKEN?: string
-  /** Deprecated SDK project id. Native calls never use it. */
+  /** Existing Server Function app identifier. */
   MITRA_PROJECT_ID?: string
   [key: string]: string | undefined
 }

@@ -53,18 +53,32 @@ function normalizeApiUrl(value: string): string {
   return removeTrailingSlashes(parsed.toString())
 }
 
+function deriveNativeApiUrl(legacyBaseUrl: string | undefined): string | undefined {
+  if (legacyBaseUrl === undefined) return undefined
+
+  const parsed = new URL(normalizeApiUrl(legacyBaseUrl))
+  parsed.pathname = parsed.pathname.replace(/\/legacy\/?$/, "") || "/"
+  return removeTrailingSlashes(parsed.toString())
+}
+
 export function resolveConfig(
   config: MitraClientConfig = {},
   environment: MitraEnvironment = readDefaultEnvironment(),
 ): ResolvedMitraClientConfig {
   const apiUrl = normalizeApiUrl(
-    requiredValue(config.apiUrl ?? environment.MITRA_API_URL, "apiUrl"),
+    requiredValue(
+      config.apiUrl ?? environment.MITRA_API_URL ?? deriveNativeApiUrl(environment.MITRA_BASE_URL),
+      "apiUrl",
+    ),
   )
   const accessToken = requiredValue(
-    config.accessToken ?? environment.MITRA_PLATFORM_ACCESS_TOKEN,
+    config.accessToken ?? environment.MITRA_PLATFORM_ACCESS_TOKEN ?? environment.MITRA_TOKEN,
     "accessToken",
   )
-  const appId = requiredValue(config.appId ?? environment.MITRA_APP_ID, "appId")
+  const appId = requiredValue(
+    config.appId ?? environment.MITRA_APP_ID ?? environment.MITRA_PROJECT_ID,
+    "appId",
+  )
   const timeoutMs = config.timeoutMs
   const fetchImplementation = config.fetch ?? globalThis.fetch
 
