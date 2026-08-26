@@ -3,7 +3,7 @@
   "version": "0.2.0-beta.0",
   "dependency": {
     "package": "@joaoluistq/mitra-sdk-core-validation",
-    "version": "0.2.0-beta.6",
+    "version": "0.2.0-beta.8",
     "contractPath": "contracts/v0.2.0-beta.0/sdk-parity.json"
   },
   "sha256": "0f41764eedce0945b0b696b6f95af4d76c31a63df169b088b8a6f65d0aa841d4",

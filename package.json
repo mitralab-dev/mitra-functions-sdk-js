@@ -67,7 +67,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "@mitralab.io/sdk-core": "npm:@joaoluistq/mitra-sdk-core-validation@0.2.0-beta.6",
+    "@mitralab.io/sdk-core": "npm:@joaoluistq/mitra-sdk-core-validation@0.2.0-beta.8",
     "mitra-sdk": "1.0.63-beta.39"
   },
   "devDependencies": {
