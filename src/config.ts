@@ -1,14 +1,13 @@
 import { MitraConfigurationError } from "./errors"
 import type { Fetch, MitraClientConfig, MitraEnvironment } from "./types"
 
-export const DEFAULT_TIMEOUT_MS = 10_000
-
 export interface ResolvedMitraClientConfig {
   apiUrl: string
+  legacyBaseUrl: string
   accessToken: string
   appId: string
   dataSourceId?: string
-  timeoutMs: number
+  timeoutMs?: number
   fetch: Fetch
 }
 
@@ -54,22 +53,36 @@ function normalizeApiUrl(value: string): string {
   return removeTrailingSlashes(parsed.toString())
 }
 
+function deriveNativeApiUrl(legacyBaseUrl: string | undefined): string | undefined {
+  if (legacyBaseUrl === undefined) return undefined
+
+  const parsed = new URL(normalizeApiUrl(legacyBaseUrl))
+  parsed.pathname = parsed.pathname.replace(/\/legacy\/?$/, "") || "/"
+  return removeTrailingSlashes(parsed.toString())
+}
+
 export function resolveConfig(
   config: MitraClientConfig = {},
   environment: MitraEnvironment = readDefaultEnvironment(),
 ): ResolvedMitraClientConfig {
   const apiUrl = normalizeApiUrl(
-    requiredValue(config.apiUrl ?? environment.MITRA_API_URL, "apiUrl"),
+    requiredValue(
+      config.apiUrl ?? environment.MITRA_API_URL ?? deriveNativeApiUrl(environment.MITRA_BASE_URL),
+      "apiUrl",
+    ),
   )
   const accessToken = requiredValue(
-    config.accessToken ?? environment.MITRA_PLATFORM_ACCESS_TOKEN,
+    config.accessToken ?? environment.MITRA_PLATFORM_ACCESS_TOKEN ?? environment.MITRA_TOKEN,
     "accessToken",
   )
-  const appId = requiredValue(config.appId ?? environment.MITRA_APP_ID, "appId")
-  const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS
+  const appId = requiredValue(
+    config.appId ?? environment.MITRA_APP_ID ?? environment.MITRA_PROJECT_ID,
+    "appId",
+  )
+  const timeoutMs = config.timeoutMs
   const fetchImplementation = config.fetch ?? globalThis.fetch
 
-  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+  if (timeoutMs !== undefined && (!Number.isFinite(timeoutMs) || timeoutMs <= 0)) {
     throw new MitraConfigurationError("timeoutMs must be a positive number")
   }
   if (typeof fetchImplementation !== "function") {
@@ -83,10 +96,11 @@ export function resolveConfig(
 
   return {
     apiUrl,
+    legacyBaseUrl: normalizeApiUrl(config.legacyBaseUrl ?? environment.MITRA_BASE_URL ?? apiUrl),
     accessToken,
     appId,
     ...(dataSourceId === undefined ? {} : { dataSourceId: dataSourceId.trim() }),
-    timeoutMs,
+    ...(timeoutMs === undefined ? {} : { timeoutMs }),
     fetch: fetchImplementation,
   }
 }

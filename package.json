@@ -1,6 +1,6 @@
 {
   "name": "@mitralab.io/functions-sdk",
-  "version": "0.1.1",
+  "version": "0.2.0-beta.0",
   "description": "JavaScript and TypeScript SDK for Mitra Server Functions",
   "type": "module",
   "sideEffects": false,
@@ -38,12 +38,14 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
+    "check:declarations": "node scripts/check-declarations.mjs",
     "check:exports": "node scripts/check-exports.mjs",
     "check:contracts": "node scripts/check-contract-corpus.mjs",
+    "check:contracts:source": "node scripts/check-contract-corpus.mjs --canonical-source",
     "pack:check": "npm pack --dry-run",
     "smoke:package": "node scripts/smoke-package.mjs",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run check:exports && npm run check:contracts && npm run pack:check && npm run smoke:package",
-    "prepublishOnly": "npm run check"
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run check:declarations && npm run check:exports && npm run check:contracts && npm run pack:check && npm run smoke:package",
+    "prepublishOnly": "npm run check && npm run check:contracts:source"
   },
   "keywords": [
     "mitra",
@@ -65,7 +67,8 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "@mitralab.io/sdk-core": "^0.1.0"
+    "@mitralab.io/sdk-core": "npm:@joaoluistq/mitra-sdk-core-validation@0.2.0-beta.8",
+    "mitra-sdk": "1.0.63-beta.42"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
