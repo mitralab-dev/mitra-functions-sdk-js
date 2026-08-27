@@ -33,15 +33,7 @@ export function loadInstalledContractCorpus() {
     readFileSync(join(root, "package.json")),
     "Functions SDK package metadata",
   )
-  const dependency = sourceManifest.dependency
-  // The official package is depended on by its plain version. A validation build is
-  // published under another name and reached through an npm alias, so the exact
-  // expected specifier follows the manifest's package identity.
-  const expectedSpecifier =
-    dependency.package === expectedPackage
-      ? dependency.version
-      : `npm:${dependency.package}@${dependency.version}`
-  if (adapterMetadata.dependencies?.[expectedPackage] !== expectedSpecifier) {
+  if (adapterMetadata.dependencies?.[expectedPackage] !== sourceManifest.dependency.version) {
     throw new Error("sdk-core dependency must use the exact source manifest version")
   }
   const require = createRequire(import.meta.url)
@@ -92,20 +84,10 @@ export function validateSourceManifest(sourceManifest, options = {}) {
   const { requirePinnedSource = true } = options
   const expectedContractPath = `contracts/v${sourceManifest.version}/sdk-parity.json`
 
-  // Temporary exception until the official @mitralab.io release exists: the same
-  // contract ships under the validation package identity. Remove together with the
-  // npm alias in package.json.
-  const validationPackage = "@joaoluistq/mitra-sdk-core-validation"
-  const dependencyPackage = sourceManifest.dependency?.package
-  if (dependencyPackage !== expectedPackage && dependencyPackage !== validationPackage) {
+  if (sourceManifest.dependency?.package !== expectedPackage) {
     throw new Error(`sdk-core dependency package must be exactly ${expectedPackage}`)
   }
-  const releaseLine = (version) => (version ?? "").split("-")[0]
-  const dependencyVersionMatches =
-    dependencyPackage === expectedPackage
-      ? sourceManifest.dependency?.version === sourceManifest.version
-      : releaseLine(sourceManifest.dependency?.version) === releaseLine(sourceManifest.version)
-  if (!dependencyVersionMatches) {
+  if (sourceManifest.dependency?.version !== sourceManifest.version) {
     throw new Error("sdk-core dependency version must match the contract version")
   }
   if (sourceManifest.dependency?.contractPath !== expectedContractPath) {
