@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented in this file.
 
+## 0.2.0-beta.1
+
+This release only moves the Core dependency. The module layer forwards `integrationAdmin` inputs
+verbatim, so no runtime behavior in this package changes.
+
+- Depend on `@mitralab.io/sdk-core@0.2.0-beta.1`, whose `integrationAdmin` accepts a template
+  config defined inline (`fieldsSchemaInline`, `requestConfigInline`, `loginConfigInline`) instead
+  of a catalog `templateId`, and reads configs back with a nullable `templateId`.
+- Re-export the new Core `IntegrationFieldSchemaInput` type so consumers can describe inline
+  fields without redeclaring the shape.
+- Pin the SDK-PARITY-001 corpus to Core `0.2.0-beta.1` with its digest and immutable source commit.
+
 ## 0.2.0-beta.0
 
 This working tree prepares the `0.2.0-beta.0` package. The immutable Core source pin

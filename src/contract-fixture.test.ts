@@ -60,7 +60,7 @@ function loadInstalledCorpus(): ContractCorpus {
   const fixturePath = join(
     resolve(dirname(coreEntry), ".."),
     "contracts",
-    "v0.2.0-beta.0",
+    "v0.2.0-beta.1",
     "sdk-parity.json",
   )
   return JSON.parse(readFileSync(fixturePath, "utf8")) as ContractCorpus
@@ -142,7 +142,7 @@ function assertRequest(testCase: HttpAdapterCase, requests: RecordedRequest[]): 
 describe("canonical sdk-core HTTP adapter corpus", () => {
   it("proves the exact consumer requirement categories", () => {
     expect(corpus.contract).toBe("SDK-PARITY-001")
-    expect(corpus.version).toBe("0.2.0-beta.0")
+    expect(corpus.version).toBe("0.2.0-beta.1")
     expect(corpus.consumerRequirements["@mitralab.io/functions-sdk"]).toEqual({
       httpAdapterCases: "all",
     })
