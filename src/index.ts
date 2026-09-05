@@ -121,6 +121,7 @@ export type {
   IntegrationConnectionStatus,
   IntegrationCredentialRule,
   IntegrationFieldSchema,
+  IntegrationFieldSchemaInput,
   IntegrationLoginConfig,
   IntegrationModule,
   IntegrationProxyMode,

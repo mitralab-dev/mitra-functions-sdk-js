@@ -8,7 +8,7 @@ import process from "node:process"
 import { fileURLToPath, URL } from "node:url"
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..")
-const sourceManifestPath = join(root, "contracts", "sdk-core-v0.2.0-beta.0.manifest.json")
+const sourceManifestPath = join(root, "contracts", "sdk-core-v0.2.0-beta.1.manifest.json")
 const expectedRepository = "https://github.com/mitralab-dev/mitra-core-sdk"
 const expectedPackage = "@mitralab.io/sdk-core"
 const fullCommitPattern = /^[0-9a-f]{40}$/

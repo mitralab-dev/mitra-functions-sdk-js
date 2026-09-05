@@ -6,7 +6,7 @@ import { canonicalSourceUrl, validateSourceManifest } from "./check-contract-cor
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const manifest = JSON.parse(
-  readFileSync(join(root, "contracts", "sdk-core-v0.2.0-beta.0.manifest.json"), "utf8"),
+  readFileSync(join(root, "contracts", "sdk-core-v0.2.0-beta.1.manifest.json"), "utf8"),
 )
 
 describe("sdk-core canonical source provenance", () => {
@@ -21,19 +21,19 @@ describe("sdk-core canonical source provenance", () => {
       source: {
         repository: "https://github.com/mitralab-dev/mitra-core-sdk",
         commit: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        path: "contracts/v0.2.0-beta.0/sdk-parity.json",
+        path: "contracts/v0.2.0-beta.1/sdk-parity.json",
       },
     }
 
     expect(canonicalSourceUrl(pinned)).toBe(
       "https://raw.githubusercontent.com/mitralab-dev/mitra-core-sdk/" +
-        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/contracts/v0.2.0-beta.0/sdk-parity.json",
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/contracts/v0.2.0-beta.1/sdk-parity.json",
     )
   })
 
   it.each([
     ["repository", "https://github.com/example/mitra-core-sdk"],
-    ["path", "contracts/v0.2.0-beta.0/other.json"],
+    ["path", "contracts/v0.2.0-beta.1/other.json"],
     ["commit", "not-a-full-commit"],
   ])("rejects a false source %s", (field, value) => {
     const mutated = {
@@ -41,7 +41,7 @@ describe("sdk-core canonical source provenance", () => {
       source: {
         repository: "https://github.com/mitralab-dev/mitra-core-sdk",
         commit: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        path: "contracts/v0.2.0-beta.0/sdk-parity.json",
+        path: "contracts/v0.2.0-beta.1/sdk-parity.json",
         [field]: value,
       },
     }

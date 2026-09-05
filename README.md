@@ -322,8 +322,8 @@ The access token is redacted from API error messages and error details.
 
 ## Contract parity
 
-The test suite reads SDK-PARITY-001 version 0.2.0-beta.0 directly from the installed
-`@mitralab.io/sdk-core` package. The `sdk-core-v0.2.0-beta.0` manifest pins the expected package
+The test suite reads SDK-PARITY-001 version 0.2.0-beta.1 directly from the installed
+`@mitralab.io/sdk-core` package. The `sdk-core-v0.2.0-beta.1` manifest pins the expected package
 version, contract path, SHA-256 digest, and immutable source commit. The release gate rejects
 publication unless the installed corpus matches its raw GitHub source byte for byte.
 
@@ -337,8 +337,8 @@ at the pinned commit and compare it byte for byte with the installed package.
 ## Scope
 
 The current draft expands the native client from the initial runtime operations to the complete
-Core 0.2.0-beta.0 module surface listed above. Availability still depends on the runtime token resources
-and the service constraints in the authorization matrix.
+Core 0.2.0-beta.1 module surface listed above. Availability still depends on the runtime token
+resources and the service constraints in the authorization matrix.
 
 ## Legacy compatibility
 
@@ -382,47 +382,51 @@ npm install
 npm run check
 ```
 
-The adapter pins `@mitralab.io/sdk-core@0.2.0-beta.0` exactly. Until that version is published,
-validate
-against a supplied tarball without changing dependency metadata or the final lockfile:
+The adapter pins `@mitralab.io/sdk-core@0.2.0-beta.1` exactly and installs it from the public npm
+registry, so the checked-in `package-lock.json` carries the registry `resolved` URL and integrity
+for that exact version and `npm ci` reproduces it. Do not use a `file:` dependency or `npm link`.
+
+To validate against a Core build that is not published yet, supply a tarball without changing
+dependency metadata or the final lockfile:
 
 ```bash
-npm install --no-save --package-lock=false /path/to/mitralab.io-sdk-core-0.2.0-beta.0.tgz
+npm install --no-save --package-lock=false /path/to/mitralab.io-sdk-core-0.2.0-beta.1.tgz
 npm run lint && npm run typecheck && npm test && npm run build
-MITRA_SDK_CORE_TARBALL=/path/to/mitralab.io-sdk-core-0.2.0-beta.0.tgz npm run smoke:package
+MITRA_SDK_CORE_TARBALL=/path/to/mitralab.io-sdk-core-0.2.0-beta.1.tgz npm run smoke:package
 git diff --exit-code -- package-lock.json
 ```
 
-Do not use a `file:` dependency or `npm link`. After Core 0.2.0-beta.0 is published, install it from
-the public npm registry and commit the registry `resolved` URL and integrity generated in
-`package-lock.json`.
-
-The checked-in lock records the intended Core `0.2.0-beta.0` package without a false `0.1.x`
-registry
-resolution. It is provisional until Core is published. `npm ci` is therefore not expected to work
-from the registry before the Core release.
-
 ## Release order
 
-1. Merge and publish `@mitralab.io/sdk-core@0.2.0-beta.0` under npm's `beta` dist-tag from its
+Core moves first, then this package follows. `<core-version>` below is the Core release being
+adopted, for example `0.2.0-beta.1`.
+
+1. Merge and publish `@mitralab.io/sdk-core@<core-version>` under npm's `beta` dist-tag from its
    immutable source commit.
-2. Add that full commit SHA to `contracts/sdk-core-v0.2.0-beta.0.manifest.json` as:
+2. Add `contracts/sdk-core-v<core-version>.manifest.json` carrying that full commit SHA:
 
    ```json
    {
      "source": {
        "repository": "https://github.com/mitralab-dev/mitra-core-sdk",
        "commit": "<full-core-commit-sha>",
-       "path": "contracts/v0.2.0-beta.0/sdk-parity.json"
+       "path": "contracts/v<core-version>/sdk-parity.json"
      }
    }
    ```
 
+   Point `scripts/check-contract-corpus.mjs` and the tests that read a manifest at the new file, so
+   the gate verifies the version being adopted.
+
 3. Run `npm install --package-lock-only`, then verify that the Core lock entry is exactly
-   `0.2.0-beta.0` with an npm registry URL and integrity.
+   `<core-version>` with an npm registry URL and integrity.
 4. Run `npm ci`, `npm run check`, and `npm run check:contracts:source`.
-5. Publish `@mitralab.io/functions-sdk@0.2.0-beta.0` under npm's `beta` dist-tag and run the
+5. Publish this package under npm's `beta` dist-tag through the release workflow and run the
    tarball smoke against the registry.
+
+Steps 1 to 3 are already done for the current `0.2.0-beta.1` pin: Core is published, the manifest
+carries its immutable source commit, and the lock records the registry `resolved` URL and integrity.
+Steps 4 and 5 remain.
 
 Stable `X.Y.Z` releases use npm's default `latest` dist-tag. The workflow accepts only that stable
 form or the prerelease form `X.Y.Z-beta.N`.
