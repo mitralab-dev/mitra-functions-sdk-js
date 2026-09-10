@@ -1,4 +1,5 @@
-export { createClient, createClientFromEnvironment } from "./client"
+export { createClient, createClientFromApiKey, createClientFromEnvironment } from "./client"
+export type { AccessTokenProvider } from "./api-key"
 export type { MitraClient } from "./client"
 export type { AppScopedAppsModule, CurrentAppModule } from "./app-scoped-apps"
 export { MitraApiError, MitraConfigurationError } from "./errors"
