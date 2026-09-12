@@ -1,4 +1,5 @@
 import type { QueryParamValue, Transport, TransportRequestOptions } from "@mitralab.io/sdk-core"
+import type { AccessTokenProvider } from "./api-key"
 import { MitraApiError } from "./errors"
 import type { Fetch } from "./types"
 
@@ -10,7 +11,13 @@ interface BaseHttpClientConfig {
 
 type HttpClientConfig = BaseHttpClientConfig &
   (
-    | { authentication: "bearer"; accessToken: string; appId: string }
+    | {
+        authentication: "bearer"
+        accessToken: string
+        appId: string
+        /** Renews the token on expiry. Present only when authenticating with an api key. */
+        tokenProvider?: AccessTokenProvider
+      }
     | { authentication: "anonymous" }
   )
 
@@ -126,9 +133,14 @@ export function createApiError(
   })
 }
 
+function isUnauthorized(error: unknown): boolean {
+  return error instanceof MitraApiError && error.status === 401
+}
+
 export class HttpClient implements Transport {
   readonly #authentication: HttpClientConfig["authentication"]
   readonly #accessToken: string | undefined
+  readonly #tokenProvider: AccessTokenProvider | undefined
 
   private readonly baseUrl: string
   private readonly appId: string | undefined
@@ -139,12 +151,26 @@ export class HttpClient implements Transport {
     this.baseUrl = config.baseUrl
     this.#authentication = config.authentication
     this.#accessToken = config.authentication === "bearer" ? config.accessToken : undefined
+    this.#tokenProvider = config.authentication === "bearer" ? config.tokenProvider : undefined
     this.appId = config.authentication === "bearer" ? config.appId : undefined
     this.timeoutMs = config.timeoutMs
     this.fetchImplementation = config.fetch
   }
 
   async request<T>(path: string, options: TransportRequestOptions = {}): Promise<T> {
+    try {
+      return await this.attempt<T>(path, options)
+    } catch (error) {
+      // A 401 here means the token aged out, not that the credential is gone: the api key
+      // does not expire. Trading it again is the renewal, and it fails loudly if the key
+      // itself was revoked.
+      if (this.#tokenProvider === undefined || !isUnauthorized(error)) throw error
+      this.#tokenProvider.invalidate()
+      return this.attempt<T>(path, options)
+    }
+  }
+
+  private async attempt<T>(path: string, options: TransportRequestOptions): Promise<T> {
     const url = new URL(`${this.baseUrl}${path}`)
     appendQueryParameters(url, options.params ?? {})
 
@@ -152,14 +178,14 @@ export class HttpClient implements Transport {
     const timeout =
       controller === undefined ? undefined : setTimeout(() => controller.abort(), this.timeoutMs)
     const hasBody = options.body !== undefined
-    const authentication =
+    const accessToken =
       this.#authentication === "bearer"
-        ? {
-            type: "bearer" as const,
-            accessToken: this.#accessToken!,
-            appId: this.appId!,
-          }
-        : { type: "anonymous" as const }
+        ? ((await this.#tokenProvider?.get()) ?? this.#accessToken!)
+        : undefined
+    const authentication =
+      accessToken === undefined
+        ? { type: "anonymous" as const }
+        : { type: "bearer" as const, accessToken, appId: this.appId! }
 
     try {
       const response = await this.fetchImplementation(url, {
@@ -173,7 +199,7 @@ export class HttpClient implements Transport {
       if (response.status === 204) return undefined as T
 
       const payload = await parsePayload(response)
-      if (!response.ok) throw createApiError(response, payload, this.#accessToken)
+      if (!response.ok) throw createApiError(response, payload, accessToken)
 
       return payload as T
     } catch (error) {

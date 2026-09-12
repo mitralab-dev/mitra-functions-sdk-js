@@ -6,7 +6,6 @@ import {
   withAgentTaskSessions,
   type AuthModule,
   type SdkCore,
-  type SdkCoreErrorFactory,
   type AgentTasksWithSessions,
 } from "@mitralab.io/sdk-core"
 import { AgentTaskSseEventSource } from "./agent-task-sse"
@@ -15,7 +14,9 @@ import {
   type AppScopedAppsModule,
   type CurrentAppModule,
 } from "./app-scoped-apps"
-import { resolveConfig } from "./config"
+import { createApiKeyTokenProvider } from "./api-key"
+import { coreErrors } from "./core-errors"
+import { resolveApiKeyOptions, resolveConfig } from "./config"
 import type { ResolvedMitraClientConfig } from "./config"
 import { MitraApiError, MitraConfigurationError } from "./errors"
 import { HttpClient } from "./http-client"
@@ -24,12 +25,6 @@ import type { MitraClientConfig, MitraEnvironment } from "./types"
 
 interface AppInfoResponse {
   dataSourceId: string | null
-}
-
-const coreErrors: SdkCoreErrorFactory = {
-  configuration: (message) => new MitraConfigurationError(message),
-  invalidResponse: (message) =>
-    new MitraApiError(message, 200, { code: "INVALID_RESPONSE", retryable: false }),
 }
 
 export interface MitraClient {
@@ -103,6 +98,7 @@ class DefaultMitraClient implements MitraClient {
         authentication: "bearer",
         accessToken: config.accessToken,
         appId: config.appId,
+        ...(config.tokenProvider === undefined ? {} : { tokenProvider: config.tokenProvider }),
         ...(config.timeoutMs === undefined ? {} : { timeoutMs: config.timeoutMs }),
         fetch: config.fetch,
       })
@@ -219,4 +215,28 @@ export function createClient(config: MitraClientConfig = {}): MitraClient {
 
 export function createClientFromEnvironment(environment?: MitraEnvironment): MitraClient {
   return createConfiguredClient(resolveConfig({}, environment))
+}
+
+/**
+ * Builds a client that authenticates with an api key instead of a token you already hold.
+ *
+ * The key is traded for a token here and again whenever that token ages out, so a process
+ * that stays up for days keeps working. Reads `MITRA_API_KEY` when `apiKey` is omitted.
+ */
+export async function createClientFromApiKey(
+  config: MitraClientConfig = {},
+  environment?: MitraEnvironment,
+): Promise<MitraClient> {
+  const options = resolveApiKeyOptions(config, environment)
+  const tokenProvider = createApiKeyTokenProvider(options)
+
+  // The first token is resolved eagerly: a bad key should fail where the client is built,
+  // not later inside an unrelated call. It also gives the deprecated legacy bridge, which
+  // holds a token of its own, something valid to start from.
+  const accessToken = await tokenProvider.get()
+
+  return createConfiguredClient({
+    ...resolveConfig({ ...config, accessToken, appId: options.appId }, environment),
+    tokenProvider,
+  })
 }

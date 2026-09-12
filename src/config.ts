@@ -1,3 +1,4 @@
+import type { AccessTokenProvider } from "./api-key"
 import { MitraConfigurationError } from "./errors"
 import type { Fetch, MitraClientConfig, MitraEnvironment } from "./types"
 
@@ -9,6 +10,8 @@ export interface ResolvedMitraClientConfig {
   dataSourceId?: string
   timeoutMs?: number
   fetch: Fetch
+  /** Set when the client authenticates with an api key and renews its own token. */
+  tokenProvider?: AccessTokenProvider
 }
 
 function readDefaultEnvironment(): MitraEnvironment {
@@ -59,6 +62,45 @@ function deriveNativeApiUrl(legacyBaseUrl: string | undefined): string | undefin
   const parsed = new URL(normalizeApiUrl(legacyBaseUrl))
   parsed.pathname = parsed.pathname.replace(/\/legacy\/?$/, "") || "/"
   return removeTrailingSlashes(parsed.toString())
+}
+
+export interface ResolvedApiKeyOptions {
+  apiUrl: string
+  appId: string
+  apiKey: string
+  fetch: Fetch
+}
+
+/**
+ * Resolves what an api key needs to be traded for a token. The access token is absent by
+ * definition here: obtaining it is a network call, which is why the api key path has its own
+ * asynchronous factory instead of widening the synchronous one.
+ */
+export function resolveApiKeyOptions(
+  config: MitraClientConfig = {},
+  environment: MitraEnvironment = readDefaultEnvironment(),
+): ResolvedApiKeyOptions {
+  const fetchImplementation = config.fetch ?? globalThis.fetch
+  if (typeof fetchImplementation !== "function") {
+    throw new MitraConfigurationError("A fetch implementation is required")
+  }
+
+  return {
+    apiUrl: normalizeApiUrl(
+      requiredValue(
+        config.apiUrl ??
+          environment.MITRA_API_URL ??
+          deriveNativeApiUrl(environment.MITRA_BASE_URL),
+        "apiUrl",
+      ),
+    ),
+    appId: requiredValue(
+      config.appId ?? environment.MITRA_APP_ID ?? environment.MITRA_PROJECT_ID,
+      "appId",
+    ),
+    apiKey: requiredValue(config.apiKey ?? environment.MITRA_API_KEY, "apiKey"),
+    fetch: fetchImplementation,
+  }
 }
 
 export function resolveConfig(

@@ -28,6 +28,7 @@ It also accepts the canonical aliases:
 - `MITRA_PLATFORM_ACCESS_TOKEN`
 - `MITRA_APP_ID`
 - `MITRA_DATA_SOURCE_ID`, retained for runtime compatibility when already resolved
+- `MITRA_API_KEY`, read by `createClientFromApiKey()`
 
 When only the existing names are present, the SDK removes a trailing `/legacy` from
 `MITRA_BASE_URL` and calls the owning services from that gateway root. It forwards `MITRA_TOKEN`
@@ -60,6 +61,39 @@ const mitra = createClient({
 ```
 
 `createClientFromEnvironment(env)` is available when a function needs to supply a specific environment object, such as in tests.
+
+### Authenticating with an api key
+
+Outside the Functions runtime there is no token to inject. A process that runs on its own — a cron,
+a background collector, another service — authenticates with an api key created in
+**Settings -> API keys**:
+
+```typescript
+import { createClientFromApiKey } from "@mitralab.io/functions-sdk"
+
+const mitra = await createClientFromApiKey({
+  apiUrl: "https://api.example.com",
+  apiKey: process.env.MITRA_API_KEY,
+  appId: "app-id",
+})
+```
+
+The factory is asynchronous because trading the key for a token is a network call. It fails there,
+where the client is built, rather than inside an unrelated call later.
+
+Which key to create depends on what the process does. A **Business** key reaches the published
+product: read and write records, run queries, execute functions and integrations. A **Developer**
+key adds authoring — schema, code, publishing. An **Administrator** key belongs to a workspace
+rather than a product; the SDK issues the token for the configured `appId` from it, and the
+platform decides on that call what this user actually reaches in that product.
+
+The token lasts 48 hours and the exchange returns no refresh token, by design: the key does not
+expire and is revoked by deleting it, so the SDK renews by trading the key again. It does this on
+its own when a request comes back unauthorized, which is why a process may stay up for weeks. Keep
+the key where you keep passwords — it is valid until someone deletes it.
+
+This authentication path expects a server runtime. Never ship an api key in code that reaches a
+browser: it would be served to every visitor.
 
 ## Initialization
 

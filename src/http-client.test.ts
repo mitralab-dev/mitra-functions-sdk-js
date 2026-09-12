@@ -95,3 +95,72 @@ describe("transport header boundaries", () => {
     ).toBe(false)
   })
 })
+
+describe("token renewal", () => {
+  function renewingClient(fetch: ReturnType<typeof vi.fn<Fetch>>, tokens: string[]) {
+    let issued = 0
+    return new HttpClient({
+      baseUrl: "https://api.example.com/functions",
+      authentication: "bearer",
+      accessToken: tokens[0]!,
+      appId: "runtime-app",
+      tokenProvider: {
+        get: () => Promise.resolve(tokens[Math.min(issued, tokens.length - 1)]!),
+        invalidate: () => {
+          issued += 1
+        },
+      },
+      fetch,
+    })
+  }
+
+  it("renews the token and retries once when a request comes back unauthorized", async () => {
+    let attempts = 0
+    const fetch = vi.fn<Fetch>(async () => {
+      attempts += 1
+      return attempts === 1
+        ? new Response('{"message":"expired"}', { status: 401 })
+        : new Response('{"ok":true}', { status: 200 })
+    })
+    const client = renewingClient(fetch, ["stale-token", "fresh-token"])
+
+    await expect(client.request("/api/v1/functions")).resolves.toEqual({ ok: true })
+
+    expect(fetch).toHaveBeenCalledTimes(2)
+    const retryHeaders = fetch.mock.calls[1]?.[1]?.headers as Record<string, string>
+    expect(retryHeaders.Authorization).toBe("Bearer fresh-token")
+  })
+
+  it("gives up after a single retry so a revoked key does not loop", async () => {
+    const fetch = vi.fn<Fetch>(async () => new Response('{"message":"nope"}', { status: 401 }))
+    const client = renewingClient(fetch, ["stale-token", "also-stale"])
+
+    await expect(client.request("/api/v1/functions")).rejects.toMatchObject({ status: 401 })
+
+    expect(fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it("does not retry a request that failed for a reason other than authentication", async () => {
+    const fetch = vi.fn<Fetch>(async () => new Response('{"message":"boom"}', { status: 500 }))
+    const client = renewingClient(fetch, ["token"])
+
+    await expect(client.request("/api/v1/functions")).rejects.toMatchObject({ status: 500 })
+
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("leaves a client without a provider on its configured token", async () => {
+    const fetch = vi.fn<Fetch>(async () => new Response('{"message":"expired"}', { status: 401 }))
+    const client = new HttpClient({
+      baseUrl: "https://api.example.com/functions",
+      authentication: "bearer",
+      accessToken: "runtime-token",
+      appId: "runtime-app",
+      fetch,
+    })
+
+    await expect(client.request("/api/v1/functions")).rejects.toMatchObject({ status: 401 })
+
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+})

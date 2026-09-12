@@ -3,6 +3,8 @@ export type Fetch = typeof globalThis.fetch
 export interface MitraEnvironment {
   MITRA_API_URL?: string
   MITRA_PLATFORM_ACCESS_TOKEN?: string
+  /** Api key created in Settings -> API keys. Traded for a token by the SDK. */
+  MITRA_API_KEY?: string
   MITRA_APP_ID?: string
   MITRA_DATA_SOURCE_ID?: string
   /** Existing Server Function base URL. Used to derive the native API root when needed. */
@@ -19,6 +21,8 @@ export interface MitraClientConfig {
   /** Optional BFF base URL used only to configure deprecated reexports. */
   legacyBaseUrl?: string
   accessToken?: string
+  /** Api key created in Settings -> API keys, used by `createClientFromApiKey`. */
+  apiKey?: string
   appId?: string
   dataSourceId?: string
   /** Optional request deadline. By default, the Functions runtime owns operation time limits. */
