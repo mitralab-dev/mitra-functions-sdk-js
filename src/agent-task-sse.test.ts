@@ -1,7 +1,7 @@
 import { inspect } from "node:util"
 import { describe, expect, it, vi } from "vitest"
 import type { AgentTaskEvent, SdkCoreErrorFactory } from "@mitralab.io/sdk-core"
-import { AgentTaskSseEventSource } from "./agent-task-sse"
+import { AgentTaskSseEventSource, SILENCE_TIMEOUT_MS } from "./agent-task-sse"
 import { MitraApiError, MitraConfigurationError } from "./errors"
 import type { Fetch } from "./types"
 
@@ -21,6 +21,12 @@ const config = {
 
 function source(fetch: Fetch, overrides: Partial<typeof config> = {}) {
   return new AgentTaskSseEventSource({ ...config, ...overrides, fetch })
+}
+
+/** No handshake deadline: it would fire long before the silence window these tests measure. */
+function sourceWithoutDeadline(fetch: Fetch) {
+  const { baseUrl, accessToken, appId, errors: factory } = config
+  return new AgentTaskSseEventSource({ baseUrl, accessToken, appId, errors: factory, fetch })
 }
 
 function fragmentedSse(chunks: string[]): Response {
@@ -152,6 +158,75 @@ describe("AgentTaskSseEventSource", () => {
     expect((fetch.mock.calls[0]![1] as RequestInit).signal?.aborted).toBe(true)
     expect(onDisconnect).not.toHaveBeenCalled()
     expect(cancelled).toBe(true)
+    vi.useRealTimers()
+  })
+
+  it("reports a stream that went silent as disconnected, and a ping keeps it alive", async () => {
+    vi.useFakeTimers()
+    let controller!: ReadableStreamDefaultController<Uint8Array>
+    let cancelled = false
+    const fetch = vi.fn<Fetch>(
+      async () =>
+        new Response(
+          new ReadableStream({
+            start(value) {
+              controller = value
+            },
+            cancel() {
+              cancelled = true
+            },
+          }),
+          { headers: { "Content-Type": "text/event-stream" } },
+        ),
+    )
+    const onDisconnect = vi.fn()
+    const onEvent = vi.fn()
+
+    await sourceWithoutDeadline(fetch).open("task-1", { onEvent, onDisconnect })
+
+    // Just under the window: a late ping, not a dead stream.
+    await vi.advanceTimersByTimeAsync(SILENCE_TIMEOUT_MS - 1_000)
+    expect(onDisconnect).not.toHaveBeenCalled()
+
+    // The ping is not an event, but it is bytes, and bytes move the window.
+    controller.enqueue(new TextEncoder().encode("event: ping\ndata: {}\n\n"))
+    await vi.advanceTimersByTimeAsync(SILENCE_TIMEOUT_MS - 1_000)
+    expect(onDisconnect).not.toHaveBeenCalled()
+    expect(onEvent).not.toHaveBeenCalled()
+
+    // Two pings missed: a read nothing answers is what a half-open stream looks like. The
+    // fetch is aborted from here, the reader cancelled, and the disconnect says why and that
+    // it may be retried, which is what lets the core recover the turn from the history.
+    await vi.advanceTimersByTimeAsync(1_000)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(onDisconnect).toHaveBeenCalledTimes(1)
+    const error = onDisconnect.mock.calls[0]![0] as MitraApiError
+    expect(error).toBeInstanceOf(MitraApiError)
+    expect(error.message).toContain("silent")
+    expect(error.retryable).toBe(true)
+    expect((fetch.mock.calls[0]![1] as RequestInit).signal?.aborted).toBe(true)
+    expect(cancelled).toBe(true)
+    vi.useRealTimers()
+  })
+
+  it("does not count a stream the caller closed as silent", async () => {
+    vi.useFakeTimers()
+    const fetch = vi.fn<Fetch>(
+      async () =>
+        new Response(new ReadableStream({ start() {} }), {
+          headers: { "Content-Type": "text/event-stream" },
+        }),
+    )
+    const onDisconnect = vi.fn()
+
+    const connection = await sourceWithoutDeadline(fetch).open("task-1", {
+      onEvent: vi.fn(),
+      onDisconnect,
+    })
+    connection.close()
+    await vi.advanceTimersByTimeAsync(SILENCE_TIMEOUT_MS * 2)
+
+    expect(onDisconnect).not.toHaveBeenCalled()
     vi.useRealTimers()
   })
 
