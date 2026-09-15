@@ -11,6 +11,22 @@ import { MitraApiError, MitraConfigurationError } from "./errors"
 import { createApiError } from "./http-client"
 import type { Fetch } from "./types"
 
+/**
+ * Silence that counts as a dead stream. The copilot pings every 25 s, so two missed pings is a
+ * network or a proxy that killed the stream without closing it. Without this a half-open stream
+ * keeps `reader.read()` pending forever, `onDisconnect` never fires, and the recovery the core
+ * already has never starts: a Server Function driving an agent waits for good.
+ */
+export const SILENCE_TIMEOUT_MS = 60_000
+
+function silenceError(): MitraApiError {
+  return new MitraApiError(
+    `The Mitra Agent event stream went silent for ${SILENCE_TIMEOUT_MS / 1000}s`,
+    0,
+    { code: "NETWORK_ERROR", retryable: true },
+  )
+}
+
 interface AgentTaskSseEventSourceConfig {
   baseUrl: string
   accessToken: string
@@ -163,11 +179,29 @@ export class AgentTaskSseEventSource implements AgentTaskEventSource {
     const reader = response.body.getReader()
     const decoder = new TextDecoder()
     let buffer = ""
+    // Every chunk rearms the window, ping included: the ping is bytes like any other. The read
+    // is raced against the window rather than relying on the abort to fail it, because not
+    // every fetch fails a pending read the moment its signal fires.
+    let breakSilence!: (error: Error) => void
+    const silence = new Promise<never>((_, reject) => {
+      breakSilence = reject
+    })
+    let silenceTimer: ReturnType<typeof setTimeout> | null = null
+    const armSilence = () => {
+      if (silenceTimer !== null) clearTimeout(silenceTimer)
+      silenceTimer = setTimeout(() => breakSilence(silenceError()), SILENCE_TIMEOUT_MS)
+    }
+    const disarmSilence = () => {
+      if (silenceTimer !== null) clearTimeout(silenceTimer)
+      silenceTimer = null
+    }
 
     void (async () => {
       try {
+        armSilence()
         while (true) {
-          const { done, value } = await reader.read()
+          const { done, value } = await Promise.race([reader.read(), silence])
+          armSilence()
           if (done) break
           buffer += decoder.decode(value, { stream: true })
           let boundary = /\r?\n\r?\n/.exec(buffer)
@@ -187,6 +221,7 @@ export class AgentTaskSseEventSource implements AgentTaskEventSource {
           disconnect(error)
         }
       } finally {
+        disarmSilence()
         cleanup()
         reader.releaseLock()
       }
@@ -196,6 +231,7 @@ export class AgentTaskSseEventSource implements AgentTaskEventSource {
       close() {
         if (intentionallyClosed) return
         intentionallyClosed = true
+        disarmSilence()
         cleanup()
         controller.abort()
         void reader.cancel().catch(() => undefined)
