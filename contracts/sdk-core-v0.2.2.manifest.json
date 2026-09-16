@@ -1,0 +1,15 @@
+{
+  "contract": "SDK-PARITY-001",
+  "version": "0.2.2",
+  "dependency": {
+    "package": "@mitralab.io/sdk-core",
+    "version": "0.2.2",
+    "contractPath": "contracts/v0.2.2/sdk-parity.json"
+  },
+  "sha256": "8466d8f5169d2de93d1f99b1262af9c72316dd8348eff92fd6e3d729d8f3a800",
+  "source": {
+    "repository": "https://github.com/mitralab-dev/mitra-core-sdk",
+    "commit": "b212f3733e0a0f1be7edcb80796e597b7a464065",
+    "path": "contracts/v0.2.2/sdk-parity.json"
+  }
+}
