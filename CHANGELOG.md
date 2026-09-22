@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
+## 0.2.3-beta.0
+
+This release only moves the Core dependency. The module layer forwards inputs verbatim, so no
+runtime behavior in this package changes.
+
+- Depend on `@mitralab.io/sdk-core@0.2.8-beta.0`, which drops the `model` field from Agent task
+  creation and from the message send: a chat is created and a message is sent with `agentType`
+  and `reasoningEffort` only, and a custom provider is chosen by the `agentType` the model
+  catalog returns.
+- Pin the SDK-PARITY-001 corpus to Core `0.2.8-beta.0` with its digest and immutable source commit.
+
 ## 0.2.0-beta.1
 
 This release only moves the Core dependency. The module layer forwards `integrationAdmin` inputs
