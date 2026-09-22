@@ -368,6 +368,13 @@ describe("initialization", () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 
+  it("reaches the custom provider operations through agentConnections", () => {
+    const client = createClient({ ...config, fetch: mockFetch() })
+
+    expect(typeof client.agentConnections.createCustomProvider).toBe("function")
+    expect(typeof client.agentConnections.deleteCustomProvider).toBe("function")
+  })
+
   it("does not request app info when a data source is configured", async () => {
     const fetch = mockFetch()
     const client = createClient({ ...config, fetch })
