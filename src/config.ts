@@ -1,3 +1,4 @@
+import type { AgentWebSocketConstructor } from "@mitralab.io/sdk-core"
 import type { AccessTokenProvider } from "./api-key"
 import { MitraConfigurationError } from "./errors"
 import type { Fetch, MitraClientConfig, MitraEnvironment } from "./types"
@@ -10,6 +11,7 @@ export interface ResolvedMitraClientConfig {
   dataSourceId?: string
   timeoutMs?: number
   fetch: Fetch
+  WebSocket?: AgentWebSocketConstructor
   /** Set when the client authenticates with an api key and renews its own token. */
   tokenProvider?: AccessTokenProvider
 }
@@ -144,5 +146,6 @@ export function resolveConfig(
     ...(dataSourceId === undefined ? {} : { dataSourceId: dataSourceId.trim() }),
     ...(timeoutMs === undefined ? {} : { timeoutMs }),
     fetch: fetchImplementation,
+    ...(config.WebSocket === undefined ? {} : { WebSocket: config.WebSocket }),
   }
 }

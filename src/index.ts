@@ -32,6 +32,8 @@ export type {
   AgentSendAndWaitOptions,
   AgentSendOptions,
   AgentSessionTransport,
+  AgentWebSocket,
+  AgentWebSocketConstructor,
   AgentTimelineItem as CoreAgentTimelineItem,
   AgentToolEvent as CoreAgentToolEvent,
   AgentTurnResult,

@@ -1,6 +1,6 @@
 {
   "name": "@mitralab.io/functions-sdk",
-  "version": "0.2.3",
+  "version": "0.2.4-beta.0",
   "description": "JavaScript and TypeScript SDK for Mitra Server Functions",
   "type": "module",
   "sideEffects": false,
@@ -67,7 +67,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "@mitralab.io/sdk-core": "0.2.8",
+    "@mitralab.io/sdk-core": "0.2.9-beta.1",
     "mitra-sdk": "1.0.63-beta.42"
   },
   "devDependencies": {

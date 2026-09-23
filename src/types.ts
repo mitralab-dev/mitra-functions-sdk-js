@@ -1,3 +1,5 @@
+import type { AgentWebSocketConstructor } from "@mitralab.io/sdk-core"
+
 export type Fetch = typeof globalThis.fetch
 
 export interface MitraEnvironment {
@@ -27,5 +29,15 @@ export interface MitraClientConfig {
   dataSourceId?: string
   /** Optional request deadline. By default, the Functions runtime owns operation time limits. */
   timeoutMs?: number
+  /**
+   * fetch for the Mitra API calls, which carry the access token. The Agent box routes never use
+   * it: they take `globalThis.fetch`, so a fetch that adds `Authorization` cannot hand the token
+   * to the box.
+   */
   fetch?: Fetch
+  /**
+   * WebSocket implementation for Agent sessions, such as `ws`, when the runtime has no global one.
+   * Without either, Agent sessions reach the box over HTTP.
+   */
+  WebSocket?: AgentWebSocketConstructor
 }

@@ -18,7 +18,7 @@ import { createApiKeyTokenProvider } from "./api-key"
 import { coreErrors } from "./core-errors"
 import { resolveApiKeyOptions, resolveConfig } from "./config"
 import type { ResolvedMitraClientConfig } from "./config"
-import { MitraApiError, MitraConfigurationError } from "./errors"
+import { MitraApiError } from "./errors"
 import { HttpClient } from "./http-client"
 import { configureLegacySdk } from "./legacy/configure"
 import type { MitraClientConfig, MitraEnvironment } from "./types"
@@ -129,27 +129,28 @@ class DefaultMitraClient implements MitraClient {
     this.agentConnections = core.agentConnections
     this.agentCredentials = core.agentCredentials
     this.agents = core.agents
-    const agentSessionManager = createAgentTaskSessionManager({
-      tasks: core.agentTasks,
-      eventSource: new AgentTaskSseEventSource({
-        baseUrl: `${config.apiUrl}/copilot`,
-        accessToken: config.accessToken,
-        appId: config.appId,
-        ...(config.timeoutMs === undefined ? {} : { timeoutMs: config.timeoutMs }),
-        fetch: config.fetch,
-        errors: coreErrors,
+    this.agentTasks = withAgentTaskSessions(
+      core.agentTasks,
+      createAgentTaskSessionManager({
+        tasks: core.agentTasks,
+        eventSource: new AgentTaskSseEventSource({
+          baseUrl: `${config.apiUrl}/copilot`,
+          accessToken: config.accessToken,
+          appId: config.appId,
+          ...(config.timeoutMs === undefined ? {} : { timeoutMs: config.timeoutMs }),
+          fetch: config.fetch,
+          errors: coreErrors,
+        }),
+        // Core owns the channel to the box. Without a WebSocket, as in the Functions runtime on
+        // Node 20, `auto` reaches the box over HTTP. The box routes use the global fetch, never
+        // `config.fetch`: the grant in the channel URL is the box credential, and a custom fetch
+        // that adds `Authorization` would send the Function token to the box.
+        directChannel: {
+          apiUrl: config.apiUrl,
+          ...(config.WebSocket === undefined ? {} : { WebSocket: config.WebSocket }),
+        },
       }),
-    })
-    this.agentTasks = withAgentTaskSessions(core.agentTasks, {
-      session: (options) => {
-        if (options.transport === "websocket") {
-          throw new MitraConfigurationError(
-            "WebSocket Agent sessions are not available in the Functions runtime; use http or auto",
-          )
-        }
-        return agentSessionManager.session(options)
-      },
-    })
+    )
     this.apps = appModules.apps
     this.auth = core.auth
     this.context = core.context
