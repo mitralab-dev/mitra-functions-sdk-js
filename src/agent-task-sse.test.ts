@@ -75,20 +75,6 @@ describe("AgentTaskSseEventSource", () => {
     vi.useRealTimers()
   })
 
-  it("rejects an explicitly requested WebSocket transport", async () => {
-    const fetch = vi.fn<Fetch>()
-
-    await expect(
-      source(fetch).open(
-        "task-1",
-        { onEvent: vi.fn(), onDisconnect: vi.fn() },
-        undefined,
-        "websocket",
-      ),
-    ).rejects.toBeInstanceOf(MitraConfigurationError)
-    expect(fetch).not.toHaveBeenCalled()
-  })
-
   it("authenticates a path-safe SSE request and parses fragmented hello, ping, and message events", async () => {
     const event: AgentTaskEvent = {
       type: "textDelta",

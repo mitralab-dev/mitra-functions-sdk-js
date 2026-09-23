@@ -111,8 +111,67 @@ function appDeploy() {
   }
 }
 
+function agentTask() {
+  return {
+    id: "task-1",
+    appId: config.appId,
+    agentId: null,
+    userId: "user-1",
+    title: "Functions session",
+    agentType: "CODEX",
+    reasoningEffort: null,
+    archived: false,
+    createdAt: "2026-01-01T00:00:00Z",
+    updatedAt: "2026-01-01T00:00:00Z",
+  }
+}
+
+function eventStream(onStart: (controller: ReadableStreamDefaultController<Uint8Array>) => void) {
+  return new Response(new ReadableStream<Uint8Array>({ start: onStart }), {
+    headers: { "Content-Type": "text/event-stream" },
+  })
+}
+
+/** The Copilot offering a box on the API host (proxy mode), and that box's HTTP routes. */
+class FakeBox {
+  readonly wsUrl = "wss://api.example.com/box/api/mitra/chat/ws?grant=box-grant"
+  private stream: ReadableStreamDefaultController<Uint8Array> | undefined
+
+  readonly fetch = vi.fn<Fetch>(async (input, init) => {
+    const url = String(input)
+    if (url.endsWith("/api/v1/tasks") && init?.method === "POST") return json(agentTask())
+    if (url.endsWith("/api/v1/tasks/task-1")) return json(agentTask())
+    if (url.endsWith("/api/v1/tasks/task-1/channel")) {
+      return json({ wsUrl: this.wsUrl, lastSequence: 0 })
+    }
+    if (url.includes("/box/api/mitra/chat/events?")) {
+      return eventStream((controller) => {
+        this.stream = controller
+      })
+    }
+    if (url.includes("/box/api/mitra/chat/messages?")) return json({ accepted: true })
+    if (url.endsWith("/api/v1/tasks/task-1/events")) return eventStream(() => undefined)
+    if (url.includes("/api/v1/tasks/task-1/messages?")) return json(springPage([]))
+    throw new Error(`Unexpected request: ${init?.method} ${url}`)
+  })
+
+  urls(): string[] {
+    return this.fetch.mock.calls.map(([input]) => String(input))
+  }
+
+  request(index: number) {
+    return requestAt(this.fetch, index)
+  }
+
+  push(type: string, payload: unknown, sequence: number): void {
+    const frame = JSON.stringify({ type, payload, timestamp: 1, sequence })
+    this.stream?.enqueue(new TextEncoder().encode(`data: ${frame}\n\n`))
+  }
+}
+
 afterEach(() => {
   vi.unstubAllEnvs()
+  vi.unstubAllGlobals()
 })
 
 describe("configuration", () => {
@@ -679,24 +738,13 @@ describe("native service transports", () => {
     })
   })
 
-  it("opens the authenticated SSE channel before posting an Agent session input", async () => {
-    const task = {
-      id: "task-1",
-      appId: config.appId,
-      agentId: null,
-      userId: "user-1",
-      title: "Functions session",
-      agentType: "CODEX",
-      reasoningEffort: null,
-      archived: false,
-      createdAt: "2026-01-01T00:00:00Z",
-      updatedAt: "2026-01-01T00:00:00Z",
-    }
+  it("falls back to the authenticated Copilot SSE, visibly, when no box channel is offered", async () => {
     const encoder = new TextEncoder()
     let eventStreamCancelled = false
     const fetch = vi.fn<Fetch>(async (input, init) => {
       const url = String(input)
-      if (url.endsWith("/api/v1/tasks") && init?.method === "POST") return json(task)
+      if (url.endsWith("/api/v1/tasks") && init?.method === "POST") return json(agentTask())
+      if (url.endsWith("/api/v1/tasks/task-1/channel")) return new Response(null, { status: 202 })
       if (url.endsWith("/api/v1/tasks/task-1/events")) {
         return new Response(
           new ReadableStream({
@@ -720,17 +768,23 @@ describe("native service transports", () => {
     })
     const client = createClient({ ...config, fetch })
     const session = client.agentTasks.session({ create: true, agentType: "CODEX" })
+    const raw: unknown[] = []
+    session.on("raw", (event) => raw.push(event))
+    const accepted = vi.fn()
+    session.on("accepted", accepted)
 
     session.send("Build the report")
-    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(4))
+    await vi.waitFor(() => expect(accepted).toHaveBeenCalledOnce())
 
     expect(fetch.mock.calls.map(([input]) => String(input))).toEqual([
       "https://api.example.com/copilot/api/v1/tasks",
+      "https://api.example.com/copilot/api/v1/tasks/task-1/channel",
       "https://api.example.com/copilot/api/v1/tasks/task-1/events",
       "https://api.example.com/copilot/api/v1/tasks/task-1/messages?size=100&sort=createdAt%2Cdesc",
       "https://api.example.com/copilot/api/v1/tasks/task-1/inputs",
     ])
-    expect(requestAt(fetch, 1).init).toMatchObject({
+    expect(raw[0]).toMatchObject({ type: "channelDeclined", payload: { reason: "unavailable" } })
+    expect(requestAt(fetch, 2).init).toMatchObject({
       method: "GET",
       headers: {
         Accept: "text/event-stream",
@@ -738,21 +792,89 @@ describe("native service transports", () => {
         "X-App-Id": "app/one",
       },
     })
-    expect(requestAt(fetch, 3).init.body).toBe(
+    expect(requestAt(fetch, 4).init.body).toBe(
       JSON.stringify({ type: "message", content: "Build the report" }),
     )
     session.close()
     await vi.waitFor(() => expect(eventStreamCancelled).toBe(true))
   })
 
-  it("rejects WebSocket Agent sessions before making a request", () => {
-    const fetch = mockFetch()
-    const client = createClient({ ...config, fetch })
+  it("reaches the box over HTTP without a WebSocket, as in the Functions runtime", async () => {
+    vi.stubGlobal("WebSocket", undefined)
+    const box = new FakeBox()
+    const client = createClient({ ...config, fetch: box.fetch })
+    const session = client.agentTasks.session({ create: true, agentType: "CODEX" })
+    const accepted = vi.fn()
+    session.on("accepted", accepted)
 
-    expect(() => client.agentTasks.session({ taskId: "task-1", transport: "websocket" })).toThrow(
-      "WebSocket Agent sessions are not available",
+    const result = session.sendAndWait("Build the report")
+    await vi.waitFor(() => expect(accepted).toHaveBeenCalledOnce())
+
+    expect(box.urls()).toEqual([
+      "https://api.example.com/copilot/api/v1/tasks",
+      "https://api.example.com/copilot/api/v1/tasks/task-1/channel",
+      "https://api.example.com/box/api/mitra/chat/events?grant=box-grant&fromSequence=0",
+      "https://api.example.com/copilot/api/v1/tasks/task-1/messages?size=100&sort=createdAt%2Cdesc",
+      "https://api.example.com/box/api/mitra/chat/messages?grant=box-grant",
+    ])
+    expect(JSON.parse(String(box.request(0).init.body))).toEqual({
+      agentType: "CODEX",
+      runtime: "T3",
+    })
+    expect(box.request(4).init).toMatchObject({
+      method: "POST",
+      body: JSON.stringify({ type: "message", content: "Build the report" }),
+    })
+    // The grant in the channel URL is the box's credential; the runtime token stays with the API.
+    for (const index of [2, 4]) {
+      expect(JSON.stringify(box.request(index).init)).not.toContain("secret-access-token")
+    }
+
+    box.push("stepStart", { lifecycle: { turnId: "turn-1" } }, 1)
+    box.push("textChunk", { text: "Done", kind: "text", lifecycle: { turnId: "turn-1" } }, 2)
+    box.push("stepFinish", { reason: "endTurn", lifecycle: { turnId: "turn-1" } }, 3)
+    await expect(result).resolves.toMatchObject({ content: "Done", reason: "endTurn" })
+    session.close()
+  })
+
+  it("dials the box with the WebSocket given to the client", async () => {
+    vi.stubGlobal("WebSocket", undefined)
+    const box = new FakeBox()
+    const dialed: string[] = []
+    class InjectedWebSocket {
+      readyState = 0
+      onopen: ((event: never) => void) | null = null
+      onmessage: ((event: never) => void) | null = null
+      onerror: ((event: never) => void) | null = null
+      onclose: ((event: never) => void) | null = null
+      constructor(url: string) {
+        dialed.push(url)
+      }
+      send(): void {}
+      close(): void {}
+    }
+    const client = createClient({ ...config, fetch: box.fetch, WebSocket: InjectedWebSocket })
+
+    const session = client.agentTasks.session({ taskId: "task-1", transport: "websocket" })
+
+    await vi.waitFor(() => expect(dialed).toEqual([box.wsUrl]))
+    session.close()
+  })
+
+  it("keeps a websocket session on the Copilot SSE when no WebSocket can be had", async () => {
+    vi.stubGlobal("WebSocket", undefined)
+    const box = new FakeBox()
+    const client = createClient({ ...config, fetch: box.fetch })
+    const session = client.agentTasks.session({ taskId: "task-1", transport: "websocket" })
+    const raw: unknown[] = []
+    session.on("raw", (event) => raw.push(event))
+
+    await vi.waitFor(() =>
+      expect(box.urls()).toContain("https://api.example.com/copilot/api/v1/tasks/task-1/events"),
     )
-    expect(fetch).not.toHaveBeenCalled()
+    expect(box.urls()).not.toContain("https://api.example.com/copilot/api/v1/tasks/task-1/channel")
+    expect(raw[0]).toMatchObject({ type: "channelDeclined", payload: { reason: "websocket" } })
+    session.close()
   })
 
   it("uses the Messenger transport with a protected request body", async () => {

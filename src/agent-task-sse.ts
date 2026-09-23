@@ -4,10 +4,9 @@ import {
   type AgentTaskEventConnection,
   type AgentTaskEventObserver,
   type AgentTaskEventSource,
-  type AgentSessionTransport,
   type SdkCoreErrorFactory,
 } from "@mitralab.io/sdk-core"
-import { MitraApiError, MitraConfigurationError } from "./errors"
+import { MitraApiError } from "./errors"
 import { createApiError } from "./http-client"
 import type { Fetch } from "./types"
 
@@ -101,13 +100,7 @@ export class AgentTaskSseEventSource implements AgentTaskEventSource {
     taskId: string,
     observer: AgentTaskEventObserver,
     signal?: AbortSignal,
-    transport?: AgentSessionTransport,
   ): Promise<AgentTaskEventConnection> {
-    if (transport === "websocket") {
-      throw new MitraConfigurationError(
-        "WebSocket Agent sessions are not available in the Functions runtime",
-      )
-    }
     if (signal?.aborted) throw signal.reason ?? new Error("Agent event stream was aborted")
 
     const controller = new AbortController()

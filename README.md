@@ -227,18 +227,15 @@ single-Function methods for composed scheduling.
 The native SDK deliberately has no separate schedule lifecycle methods. Create, patch, get, and
 list keep Function state and its composed cron fields in one contract.
 
-### Live Agent sessions over HTTP
+### Live Agent sessions
 
-`agentTasks.session()` adds the Core session state machine to the native Copilot task module. The
-Functions adapter uses the direct HTTP channel because Server Functions do not provide a browser
-WebSocket runtime:
+`agentTasks.session()` adds the Core session state machine to the native Copilot task module.
+Core also owns the direct channel to the chat's box: the session asks the Copilot where the chat
+is served (`POST /copilot/api/v1/tasks/{taskId}/channel`) and then talks to that box, which runs
+the turn. This package only wires the channel to the client's API URL, `fetch`, and WebSocket.
 
 ```typescript
-const session = mitra.agentTasks.session({
-  create: true,
-  agentType: "CODEX",
-  transport: "http",
-})
+const session = mitra.agentTasks.session({ create: true, agentType: "CODEX" })
 
 session.on("delta", ({ delta, kind }) => {
   console.log(kind, delta)
@@ -249,17 +246,66 @@ console.log(result.content)
 session.close()
 ```
 
-Existing tasks use `mitra.agentTasks.session({ taskId })`. The adapter opens
-`GET /copilot/api/v1/tasks/{taskId}/events` as a Server-Sent Events (SSE) stream before it sends
-input to `POST /inputs`. Both calls use the fixed runtime token in `Authorization` plus
-`X-App-Id`; credentials are never placed in the URL. `transport: "auto"` and `"http"` use this
-channel, while `"websocket"` rejects locally.
+Existing tasks use `mitra.agentTasks.session({ taskId })`. A new chat is created on the box
+runtime (`runtime: "T3"`) unless the session names another runtime.
 
-When `timeoutMs` is configured, it applies only while waiting for the SSE response headers. Once
-the handshake succeeds, the body remains open until the session closes, its abort signal fires, or
-the server disconnects. The parser ignores `hello` and `ping` keepalives and forwards `message`
-events to the Core session manager. Core performs one reconnect and reconciles persisted messages
-after an unexpected disconnect.
+`transport` picks how the session reaches the box:
+
+- `auto`, the default, uses the box WebSocket when the runtime has one and the box HTTP routes
+  otherwise: a `POST` per message and a Server-Sent Events (SSE) stream for events.
+- `http` always uses the box HTTP routes.
+- `websocket` always uses the box WebSocket.
+
+The Serverless Functions runtime runs Node 20, which has no global `WebSocket`, so sessions
+there reach the box over HTTP. Node 22 and newer have one. To use the socket on a runtime without
+it, pass an implementation such as `ws` when you create the client; this package does not depend
+on one:
+
+```typescript
+import WebSocket from "ws"
+
+const mitra = createClient({ WebSocket })
+```
+
+The box is reached through the channel URL the Copilot returns, which carries a short-lived
+grant; the runtime token is never sent to the box. Core follows only a channel on the configured
+API host or a Mitra box host. When the Copilot offers no channel, or the offer cannot be followed
+(for example a `websocket` session with no WebSocket available), the session stays on the
+Copilot: it opens `GET /copilot/api/v1/tasks/{taskId}/events` as an SSE stream with the runtime
+token in `Authorization` plus `X-App-Id`, and sends input to `POST /inputs`. That fallback is
+never silent: the session first emits a `raw` event of type `channelDeclined` with the reason.
+
+When `timeoutMs` is configured, it applies only while waiting for the Copilot SSE response
+headers. The parser ignores `hello` and `ping` keepalives, and a stream silent for 60 seconds counts
+as a disconnect; Core then reconnects once and reconciles persisted messages. The box channel has
+its own handshake, silence, redial, and admission deadlines in Core.
+
+#### Send and return
+
+A Function does not have to wait for the whole turn. Once the box admits the message, the turn
+runs and is recorded without the Function, so it can send, wait for `accepted`, and return:
+
+```typescript
+export async function handler(input: { taskId: string; prompt: string }) {
+  const session = mitra.agentTasks.session({ taskId: input.taskId })
+  try {
+    await new Promise<void>((resolve, reject) => {
+      session.on("accepted", () => resolve())
+      session.on("error", ({ code, error }) =>
+        reject(new Error(code ? `${code}: ${error}` : error)),
+      )
+      session.send(input.prompt)
+    })
+    return { accepted: true }
+  } finally {
+    session.close()
+  }
+}
+```
+
+`accepted` fires when the box starts the admitted turn, or after the Copilot's `202` on the
+fallback. A refusal fires `error` instead, and a box that does not answer fails the send after
+35 seconds. Returning before `accepted` may lose the message.
 
 ### App-scoped Code Studio access
 
@@ -383,8 +429,7 @@ part of this package. Every re-export is the legacy binding itself, unchanged, a
 `@deprecated` with the new equivalent when one exists. Native raw SQL is available through `sql`;
 app authoring and Agent runtime modules cover most builder and Agent SDK operations. Builder-specific
 Git and direct-S3 flows have no one-to-one replacement and remain supported through the legacy
-exports. Live Agent sessions have a native HTTP and SSE replacement through
-`agentTasks.session()`.
+exports. Live Agent sessions have a native replacement through `agentTasks.session()`.
 
 `getGitConfigMitra` remains legacy-only because credential minting is an internal Sandbox POST
 authenticated between services and is not published for app tokens. The Sandbox already owns Git
