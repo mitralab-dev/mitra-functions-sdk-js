@@ -118,11 +118,11 @@ const BOX_HOST = "49999-box1.e2b.app"
 const BOX_WS_URL = `wss://api.example.com/__ide/${BOX_HOST}/api/mitra/chat/ws?grant=box-grant&ticket=box-ticket`
 const BOX_ROUTES = `https://api.example.com/__ide/${BOX_HOST}/api/mitra/chat`
 
-function agentTask() {
+function agentTask(agentId: string | null = AGENT_ID) {
   return {
     id: "task-1",
     appId: config.appId,
-    agentId: AGENT_ID,
+    agentId,
     userId: "user-1",
     title: "Functions session",
     agentType: "CODEX",
@@ -160,6 +160,8 @@ class FakeBox {
   /** Answers for `POST /channel`, in order; then the box is offered. */
   readonly channelAnswers: (() => Response)[] = []
   readonly tokens: string[] = []
+  /** The task's business agent; null makes it a chat that is not an agent chat. */
+  taskAgentId: string | null = AGENT_ID
   eventsStatus = 200
   private stream: ReadableStreamDefaultController<Uint8Array> | undefined
 
@@ -183,8 +185,10 @@ class FakeBox {
       this.tokens.push(token)
       return json({ accessToken: token })
     }
-    if (url.endsWith("/copilot/api/v1/tasks") && method === "POST") return json(agentTask())
-    if (url.endsWith("/copilot/api/v1/tasks/task-1")) return json(agentTask())
+    if (url.endsWith("/copilot/api/v1/tasks") && method === "POST") {
+      return json(agentTask(this.taskAgentId))
+    }
+    if (url.endsWith("/copilot/api/v1/tasks/task-1")) return json(agentTask(this.taskAgentId))
     if (url.endsWith("/copilot/api/v1/tasks/task-1/channel")) {
       const answer = this.channelAnswers.shift()
       return answer ? answer() : json({ wsUrl: BOX_WS_URL, lastSequence: 0 })
@@ -922,6 +926,43 @@ describe("Agent sessions", () => {
     box.push("stepFinish", { reason: "endTurn", lifecycle: { turnId: "turn-1" } }, 3)
     await expect(result).resolves.toMatchObject({ content: "Done", reason: "endTurn" })
     expectNoCredentialOnTheBox(box, config.accessToken)
+    session.close()
+  })
+
+  it("keeps a chat without agentId on the Copilot, without asking for the channel", async () => {
+    vi.stubGlobal("WebSocket", undefined)
+    const box = new FakeBox()
+    box.taskAgentId = null
+    const client = createClient({ ...config, fetch: box.client })
+    const session = client.agentTasks.session({ create: true, agentType: "CODEX" })
+    const raw = recordRaw(session)
+    const accepted = vi.fn()
+    session.on("accepted", accepted)
+
+    session.send("Build the report")
+    await vi.waitFor(() => expect(accepted).toHaveBeenCalledOnce())
+
+    expect(JSON.parse(String(box.calls[0]?.init.body))).toEqual({ agentType: "CODEX" })
+    expect(box.urls()).not.toContain("https://api.example.com/copilot/api/v1/tasks/task-1/channel")
+    expect(box.urls()).toContain("https://api.example.com/copilot/api/v1/tasks/task-1/events")
+    expect(box.urls()).toContain("https://api.example.com/copilot/api/v1/tasks/task-1/inputs")
+    expect(box.boxCalls()).toEqual([])
+    expect(raw).not.toContainEqual(expect.objectContaining({ type: "channelDeclined" }))
+    session.close()
+  })
+
+  it("keeps an existing task without agentId on the Copilot, without asking for the channel", async () => {
+    vi.stubGlobal("WebSocket", undefined)
+    const box = new FakeBox()
+    box.taskAgentId = null
+    const client = createClient({ ...config, fetch: box.client })
+    const session = client.agentTasks.session({ taskId: "task-1" })
+
+    await vi.waitFor(() =>
+      expect(box.urls()).toContain("https://api.example.com/copilot/api/v1/tasks/task-1/events"),
+    )
+    expect(box.urls()).not.toContain("https://api.example.com/copilot/api/v1/tasks/task-1/channel")
+    expect(box.boxCalls()).toEqual([])
     session.close()
   })
 

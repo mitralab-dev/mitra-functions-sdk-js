@@ -4,12 +4,13 @@ All notable changes to this project are documented in this file.
 
 ## 0.2.4-beta.0
 
-- Depend on `@mitralab.io/sdk-core@0.2.9-beta.0`, which takes the chat's direct channel to its box
+- Depend on `@mitralab.io/sdk-core@0.2.9-beta.1`, which takes the chat's direct channel to its box
   as the Agent session transport. Sessions ask the Copilot for the channel and send to the box:
   over its WebSocket, or over its HTTP routes (POST to send, SSE to read) on a runtime without
   one. The Copilot SSE and `POST /inputs` stay as the fallback, announced by a `channelDeclined`
-  raw event. Only an agent chat, one with an `agentId`, goes to the box; new agent chats are
-  created with `runtime: "T3"` unless the session names a runtime.
+  raw event. Only an agent chat, a task with an `agentId`, goes to the box, also when opened by
+  `taskId`; a chat without `agentId` stays on the Copilot and never asks for the channel. New agent
+  chats are created with `runtime: "T3"` unless the session names a runtime.
 - Wire the channel to the client's API URL. The box routes use `globalThis.fetch`, never the
   client's `fetch`, so a custom fetch that adds `Authorization` cannot send the token to the box.
   `auto` uses the box WebSocket when the runtime has one and HTTP otherwise, which is the case of
@@ -19,7 +20,7 @@ All notable changes to this project are documented in this file.
   Copilot SSE with `channelDeclined` when no WebSocket is available.
 - The new `accepted` session event fires when the box admits the turn, so a Function can send,
   await it, and return. `sendAndWait` is unchanged.
-- Pin the SDK-PARITY-001 corpus to Core `0.2.9-beta.0` with its digest and immutable source commit.
+- Pin the SDK-PARITY-001 corpus to Core `0.2.9-beta.1` with its digest and immutable source commit.
 
 ## 0.2.3
 

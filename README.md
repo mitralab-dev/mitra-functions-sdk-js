@@ -234,8 +234,9 @@ Core also owns the direct channel to the chat's box: the session asks the Copilo
 is served (`POST /copilot/api/v1/tasks/{taskId}/channel`) and then talks to that box, which runs
 the turn. This package only wires the channel to the client's API URL and WebSocket.
 
-Only an agent chat, one with an `agentId`, goes to the box. A chat without `agentId` keeps the
-Copilot stream and inputs as before.
+Only an agent chat, a task with an `agentId`, goes to the box, whether the session creates it or
+opens it with `session({ taskId })`. A chat without `agentId` keeps the Copilot stream and inputs
+as before and never asks for the channel.
 
 ```typescript
 const session = mitra.agentTasks.session({
