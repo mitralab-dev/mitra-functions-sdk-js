@@ -102,7 +102,6 @@ export function resolveApiKeyOptions(
     ),
     apiKey: requiredValue(config.apiKey ?? environment.MITRA_API_KEY, "apiKey"),
     fetch: fetchImplementation,
-    ...(config.WebSocket === undefined ? {} : { WebSocket: config.WebSocket }),
   }
 }
 

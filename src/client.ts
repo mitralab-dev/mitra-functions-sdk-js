@@ -142,10 +142,11 @@ class DefaultMitraClient implements MitraClient {
           errors: coreErrors,
         }),
         // Core owns the channel to the box. Without a WebSocket, as in the Functions runtime on
-        // Node 20, `auto` reaches the box over HTTP.
+        // Node 20, `auto` reaches the box over HTTP. The box routes use the global fetch, never
+        // `config.fetch`: the grant in the channel URL is the box credential, and a custom fetch
+        // that adds `Authorization` would send the Function token to the box.
         directChannel: {
           apiUrl: config.apiUrl,
-          fetch: config.fetch,
           ...(config.WebSocket === undefined ? {} : { WebSocket: config.WebSocket }),
         },
       }),

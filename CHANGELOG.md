@@ -8,10 +8,12 @@ All notable changes to this project are documented in this file.
   as the Agent session transport. Sessions ask the Copilot for the channel and send to the box:
   over its WebSocket, or over its HTTP routes (POST to send, SSE to read) on a runtime without
   one. The Copilot SSE and `POST /inputs` stay as the fallback, announced by a `channelDeclined`
-  raw event. New chats are created with `runtime: "T3"` unless the session names a runtime.
-- Wire the channel to the client's API URL and `fetch`. `auto` uses the box WebSocket when the
-  runtime has one and HTTP otherwise, which is the case of the Serverless Functions runtime on
-  Node 20. No WebSocket dependency is added.
+  raw event. Only an agent chat, one with an `agentId`, goes to the box; new agent chats are
+  created with `runtime: "T3"` unless the session names a runtime.
+- Wire the channel to the client's API URL. The box routes use `globalThis.fetch`, never the
+  client's `fetch`, so a custom fetch that adds `Authorization` cannot send the token to the box.
+  `auto` uses the box WebSocket when the runtime has one and HTTP otherwise, which is the case of
+  the Serverless Functions runtime on Node 20. No WebSocket dependency is added.
 - Accept an optional `WebSocket` implementation, such as `ws`, in the client configuration.
 - `transport: "websocket"` no longer rejects: it now means the box socket, and falls back to the
   Copilot SSE with `channelDeclined` when no WebSocket is available.

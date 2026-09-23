@@ -232,10 +232,17 @@ list keep Function state and its composed cron fields in one contract.
 `agentTasks.session()` adds the Core session state machine to the native Copilot task module.
 Core also owns the direct channel to the chat's box: the session asks the Copilot where the chat
 is served (`POST /copilot/api/v1/tasks/{taskId}/channel`) and then talks to that box, which runs
-the turn. This package only wires the channel to the client's API URL, `fetch`, and WebSocket.
+the turn. This package only wires the channel to the client's API URL and WebSocket.
+
+Only an agent chat, one with an `agentId`, goes to the box. A chat without `agentId` keeps the
+Copilot stream and inputs as before.
 
 ```typescript
-const session = mitra.agentTasks.session({ create: true, agentType: "CODEX" })
+const session = mitra.agentTasks.session({
+  create: true,
+  agentId: "agent-id",
+  agentType: "CODEX",
+})
 
 session.on("delta", ({ delta, kind }) => {
   console.log(kind, delta)
@@ -246,15 +253,18 @@ console.log(result.content)
 session.close()
 ```
 
-Existing tasks use `mitra.agentTasks.session({ taskId })`. A new chat is created on the box
-runtime (`runtime: "T3"`) unless the session names another runtime.
+Existing tasks use `mitra.agentTasks.session({ taskId })`. A new agent chat is created on the
+box runtime (`runtime: "T3"`) unless the session names another runtime.
 
-`transport` picks how the session reaches the box:
+`transport` picks how the session tries to reach the box:
 
 - `auto`, the default, uses the box WebSocket when the runtime has one and the box HTTP routes
   otherwise: a `POST` per message and a Server-Sent Events (SSE) stream for events.
-- `http` always uses the box HTTP routes.
-- `websocket` always uses the box WebSocket.
+- `http` uses the box HTTP routes.
+- `websocket` uses the box WebSocket.
+
+Until the box offers the route the session asks for, the session falls back to the Copilot and
+says so with `channelDeclined` (see below). The transport is a preference, not a guarantee.
 
 The Serverless Functions runtime runs Node 20, which has no global `WebSocket`, so sessions
 there reach the box over HTTP. Node 22 and newer have one. To use the socket on a runtime without
@@ -268,14 +278,19 @@ const mitra = createClient({ WebSocket })
 ```
 
 The box is reached through the channel URL the Copilot returns, which carries a short-lived
-grant; the runtime token is never sent to the box. Core follows only a channel on the configured
+grant; the runtime token is never sent to the box. The box routes use `globalThis.fetch`, not the
+`fetch` given to the client, so a custom fetch that adds `Authorization` cannot leak the token
+there. Core follows only a channel on the configured
 API host or a Mitra box host. When the Copilot offers no channel, or the offer cannot be followed
 (for example a `websocket` session with no WebSocket available), the session stays on the
 Copilot: it opens `GET /copilot/api/v1/tasks/{taskId}/events` as an SSE stream with the runtime
 token in `Authorization` plus `X-App-Id`, and sends input to `POST /inputs`. That fallback is
 never silent: the session first emits a `raw` event of type `channelDeclined` with the reason.
 
-When `timeoutMs` is configured, it applies only while waiting for the Copilot SSE response
+`timeoutMs` also bounds `POST /channel`, which the Copilot holds open while the box boots. A
+short `timeoutMs` can abort that request, and the session then falls back to the Copilot with
+`channelDeclined` reason `unavailable`; leave it unset, or above the box boot time, for agent
+chats. On the Copilot stream, `timeoutMs` applies only while waiting for the SSE response
 headers. The parser ignores `hello` and `ping` keepalives, and a stream silent for 60 seconds counts
 as a disconnect; Core then reconnects once and reconciles persisted messages. The box channel has
 its own handshake, silence, redial, and admission deadlines in Core.
