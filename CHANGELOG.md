@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## 0.2.5-beta.0
+
+- Depend on `@mitralab.io/sdk-core@0.2.10-beta.0`: `agentCredentials.usage(provider, { scope })`
+  and `agentConnections.usage(id, provider)` read the last subscription reading a chat on that
+  credential reported, with no chat open, as `{ harness, observedAt, status, windows }`, or `null`
+  while none has; the Agent session emits the same reading as `providerUsage` during a turn on the
+  box.
+- Export `CredentialUsage`, `CredentialUsageWindow` and `AgentProviderUsage`.
+- Pin the SDK-PARITY-001 corpus to Core `0.2.10-beta.0` with its digest and immutable source commit.
+
 ## 0.2.4
 
 Stable release of the 0.2.4-beta.0 line, already on the `beta` tag. This release only moves the
