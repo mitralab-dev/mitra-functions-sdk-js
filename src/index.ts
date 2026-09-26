@@ -70,6 +70,7 @@ export type {
   CopilotProvider,
   CredentialStatus,
   CredentialUsage,
+  CredentialUsageWindow,
   CustomQueriesModule,
   CustomQueryDefinition,
   CustomQueryInput,

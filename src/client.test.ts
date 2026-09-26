@@ -1344,10 +1344,17 @@ describe("HTTP failures", () => {
 
   it("reads the subscription window of a credential and of a connection, null while none", async () => {
     const usage = {
-      usedPercent: 42,
-      windowSeconds: 18000,
-      resetsAt: "2026-09-26T15:00:00Z",
+      harness: "claude",
       observedAt: "2026-09-26T12:00:00Z",
+      status: "allowed",
+      windows: [
+        {
+          kind: "FIVE_HOUR",
+          usedPercent: 42,
+          resetsAt: "2026-09-26T15:00:00Z",
+          windowSeconds: 18000,
+        },
+      ],
     }
     const fetch = mockFetch(
       json(usage),
