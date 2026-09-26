@@ -1342,6 +1342,31 @@ describe("HTTP failures", () => {
     })
   })
 
+  it("reads the subscription window of a credential and of a connection, null while none", async () => {
+    const usage = {
+      usedPercent: 42,
+      windowSeconds: 18000,
+      resetsAt: "2026-09-26T15:00:00Z",
+      observedAt: "2026-09-26T12:00:00Z",
+    }
+    const fetch = mockFetch(
+      json(usage),
+      json({ message: "No usage", error_code: "CREDENTIAL_USAGE_NOT_FOUND" }, 404),
+    )
+    const client = createClient({ ...config, fetch })
+
+    await expect(client.agentCredentials.usage("ANTHROPIC", { scope: "ACCOUNT" })).resolves.toEqual(
+      usage,
+    )
+    await expect(client.agentConnections.usage("connection-1", "OPENAI")).resolves.toBeNull()
+    expect(String(fetch.mock.calls[0]?.[0])).toContain(
+      "/api/v1/credentials/ANTHROPIC/usage?scope=ACCOUNT",
+    )
+    expect(String(fetch.mock.calls[1]?.[0])).toContain(
+      "/api/v1/connections/connection-1/providers/OPENAI/usage",
+    )
+  })
+
   it("falls back to each valid API error field independently", async () => {
     const fetch = mockFetch(
       json(
