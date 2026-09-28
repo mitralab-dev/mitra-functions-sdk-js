@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## 0.2.5
+
+Stable release of the 0.2.5-beta.0 line, already on the `beta` tag. This release only moves the
+Core dependency to its stable number, so no runtime behavior in this package changes.
+
+- Depend on `@mitralab.io/sdk-core@0.2.10`, the stable release of the 0.2.10-beta.0 surface: the
+  subscription usage in `agentCredentials.usage`, `agentConnections.usage` and the `providerUsage`
+  session event.
+- Pin the SDK-PARITY-001 corpus to Core `0.2.10` with its digest and immutable source commit.
+
 ## 0.2.5-beta.0
 
 - Depend on `@mitralab.io/sdk-core@0.2.10-beta.0`: `agentCredentials.usage(provider, { scope })`
