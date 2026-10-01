@@ -38,6 +38,8 @@ export type {
   AgentTimelineItem as CoreAgentTimelineItem,
   AgentToolEvent as CoreAgentToolEvent,
   AgentTurnResult,
+  AgentTurnUsage,
+  AgentTurnUsageRequest,
   ExistingAgentTaskSessionOptions,
   NewAgentTaskSessionOptions,
   AgentTasksModule,
