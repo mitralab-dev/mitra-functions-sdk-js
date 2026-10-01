@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## 0.2.6
+
+Stable release of the 0.2.6-beta.0 line, already on the `beta` tag. This release only moves the
+Core dependency to its stable number, so no runtime behavior in this package changes.
+
+- Depend on `@mitralab.io/sdk-core@0.2.11`, the stable release of the 0.2.11-beta.0 surface: the
+  agent turn usage (`AgentTurnUsage`) on `AgentMessage.usage`, on the `agent` item of
+  `loadHistory` and on `turnEnd` and `sendAndWait`.
+- Pin the SDK-PARITY-001 corpus to Core `0.2.11` with its digest and immutable source commit.
+
 ## 0.2.6-beta.0
 
 - Depend on `@mitralab.io/sdk-core@0.2.11-beta.0`: the Agent message that closed a turn carries
