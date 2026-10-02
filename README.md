@@ -1,539 +1,88 @@
 # Mitra Functions SDK for JavaScript
 
-JavaScript and TypeScript SDK for code running inside Mitra Server Functions. Its native surface exposes the application-scoped Platform APIs that a function commonly needs without requiring browser authentication in the runtime.
+SDK JavaScript e TypeScript para código que roda dentro de Server Functions: entidades, queries, Functions, integrações, Code Studio do app atual, agentes e notificações, sempre no escopo de um app. Usa o access token de curta duração do runtime, sem login nem refresh. Os módulos e contratos vêm de `@mitralab.io/sdk-core`; este pacote é o adaptador do runtime (configuração, headers, prazo, mascaramento de token, recusa de redirect). App de browser usa `@mitralab.io/platform-sdk`.
 
-The SDK uses the short-lived platform access token injected into the function runtime. It does not log in users, persist credentials, refresh tokens, use API keys, or retry requests automatically.
-
-Shared API contracts and modules come from `@mitralab.io/sdk-core`. This package owns only the Server Function runtime adapter: environment configuration, token headers, optional request deadlines, credential redaction, redirect refusal, and one-attempt request policy. The core never receives or stores the token.
-
-## Installation
+## Instalação
 
 ```bash
 npm install @mitralab.io/functions-sdk
 ```
 
-Node.js 18 or newer is required.
+Node 18 ou mais novo, ou outro runtime com `fetch` global. Traz `@mitralab.io/sdk-core` e o SDK legado `mitra-sdk` com versão exata, travados por integridade no `package-lock.json`.
 
-## Runtime integration
+## Configuração
 
-The SDK accepts the existing Server Function runtime variables:
+`createClient(config?)` usa cada campo de `config` e cai na variável de ambiente quando o campo falta. `createClientFromEnvironment(env)` lê só de um objeto de ambiente, útil em teste.
 
-- `MITRA_BASE_URL`
-- `MITRA_TOKEN`
-- `MITRA_PROJECT_ID`
+No runtime de Functions, o serviço injeta `MITRA_BASE_URL` (com `/legacy` no fim), `MITRA_TOKEN` e `MITRA_PROJECT_ID`, então `createClient()` funciona sem argumento. Execução sem usuário que a invoque (passo de workflow, por exemplo) não recebe essas variáveis.
 
-It also accepts the canonical aliases:
+| Campo                | Variável                                                    | Obrigatória                    | Uso                                                                                                                                                                                     |
+| -------------------- | ----------------------------------------------------------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apiUrl`             | `MITRA_API_URL`, ou `MITRA_BASE_URL` sem o `/legacy` do fim | sim                            | URL HTTP(S) do API gateway, sem credencial, query ou fragmento; os serviços saem dela (`/iam`, `/data-manager`, `/functions`, `/integration`, `/code-studio`, `/copilot`, `/messenger`) |
+| `accessToken`        | `MITRA_PLATFORM_ACCESS_TOKEN` ou `MITRA_TOKEN`              | sim                            | token de runtime da plataforma, enviado como `Bearer` sem ser inspecionado                                                                                                              |
+| `appId`              | `MITRA_APP_ID` ou `MITRA_PROJECT_ID`                        | sim                            | escopo do app, enviado em `X-App-Id`                                                                                                                                                    |
+| `apiKey`             | `MITRA_API_KEY`                                             | só em `createClientFromApiKey` | chave criada em Configurações, API keys, para processo fora do runtime de Functions                                                                                                     |
+| `dataSourceId`       | `MITRA_DATA_SOURCE_ID`                                      | não                            | só compatibilidade; entidades e queries não usam                                                                                                                                        |
+| `legacyBaseUrl`      | `MITRA_BASE_URL`                                            | não                            | base do BFF (Backend for Frontend) usada pelos exports legados; sem ela, vale `apiUrl`                                                                                                  |
+| `timeoutMs`          |                                                             | não                            | prazo por requisição; sem valor, não há prazo no adaptador e vale o limite do runtime                                                                                                   |
+| `fetch`, `WebSocket` |                                                             | não                            | implementações a usar; `fetch` cai em `globalThis.fetch`                                                                                                                                |
 
-- `MITRA_API_URL`
-- `MITRA_PLATFORM_ACCESS_TOKEN`
-- `MITRA_APP_ID`
-- `MITRA_DATA_SOURCE_ID`, retained for runtime compatibility when already resolved
-- `MITRA_API_KEY`, read by `createClientFromApiKey()`
-
-When only the existing names are present, the SDK removes a trailing `/legacy` from
-`MITRA_BASE_URL` and calls the owning services from that gateway root. It forwards `MITRA_TOKEN`
-unchanged as the bearer token and uses `MITRA_PROJECT_ID` as the app identifier. It does not
-exchange, refresh, inspect, or alter the token. The deprecated bridge still receives the original
-base URL. Neither token name represents a user-defined Function secret.
-
-## Quick start
+## Uso
 
 ```typescript
-import { createClient } from "@mitralab.io/functions-sdk"
+import { createClient, MitraApiError } from "@mitralab.io/functions-sdk"
 
 const mitra = createClient()
 
 export async function handler(input: { orderId: string }) {
-  const order = await mitra.entities.Order.get(input.orderId)
-  return { order }
-}
-```
-
-Once the runtime integration is available, `createClient()` reads the process environment by default. For local development or explicit dependency injection, pass configuration directly:
-
-```typescript
-const mitra = createClient({
-  apiUrl: "https://api.example.com",
-  accessToken: process.env.MITRA_PLATFORM_ACCESS_TOKEN,
-  appId: "app-id",
-  dataSourceId: "data-source-id",
-})
-```
-
-`createClientFromEnvironment(env)` is available when a function needs to supply a specific environment object, such as in tests.
-
-### Authenticating with an api key
-
-Outside the Functions runtime there is no token to inject. A process that runs on its own — a cron,
-a background collector, another service — authenticates with an api key created in
-**Settings -> API keys**:
-
-```typescript
-import { createClientFromApiKey } from "@mitralab.io/functions-sdk"
-
-const mitra = await createClientFromApiKey({
-  apiUrl: "https://api.example.com",
-  apiKey: process.env.MITRA_API_KEY,
-  appId: "app-id",
-})
-```
-
-The factory is asynchronous because trading the key for a token is a network call. It fails there,
-where the client is built, rather than inside an unrelated call later.
-
-Which key to create depends on what the process does. A **Business** key reaches the published
-product: read and write records, run queries, execute functions and integrations. A **Developer**
-key adds authoring — schema, code, publishing. An **Administrator** key belongs to a workspace
-rather than a product; the SDK issues the token for the configured `appId` from it, and the
-platform decides on that call what this user actually reaches in that product.
-
-The token lasts 48 hours and the exchange returns no refresh token, by design: the key does not
-expire and is revoked by deleting it, so the SDK renews by trading the key again. It does this on
-its own when a request comes back unauthorized, which is why a process may stay up for weeks. Keep
-the key where you keep passwords — it is valid until someone deletes it.
-
-This authentication path expects a server runtime. Never ship an api key in code that reaches a
-browser: it would be served to every visitor.
-
-## Initialization
-
-Entity and Custom Query operations use the app identity from the token and `X-App-Id`, so they are
-available immediately. Custom Query execution sends only `parameters`; Data Manager resolves its
-Data Source from the authenticated app.
-
-`init()` and the optional `dataSourceId` configuration remain available for source compatibility.
-When no Data Source is configured, `init()` resolves the nullable value from Code Studio and is
-safe to call concurrently, but native Queries and Entities do not depend on it.
-
-```typescript
-const mitra = createClient()
-await mitra.init()
-
-const result = await mitra.queries.execute("5df41c69-2a74-4db6-9cca-4af2b473941f", {
-  status: "active",
-})
-```
-
-## API
-
-### Current user
-
-```typescript
-const user = await mitra.auth.me()
-```
-
-The SDK only reads the current authenticated user. Login, logout, browser storage, and token refresh belong to the Platform SDK used by frontend applications.
-
-### Entities
-
-```typescript
-type Task = {
-  id: string
-  title: string
-  status: "pending" | "done"
-}
-
-const tasks = mitra.entities.getTable<Task>("Task")
-const { data: recent } = await tasks.list({ sort: "-created_at", limit: 20 })
-const { data: pending } = await tasks.filter({ status: "pending" })
-const created = await tasks.create({ title: "Review order" })
-await tasks.update(created.id, { status: "done" })
-await tasks.delete(created.id)
-
-const dynamic = await mitra.entities.Task.list()
-```
-
-Available methods are `list`, `filter`, `get`, `create`, `bulkCreate`, `update`, `delete`, and `deleteMany`.
-
-### Custom queries
-
-```typescript
-const result = await mitra.queries.execute("5df41c69-2a74-4db6-9cca-4af2b473941f", {
-  customerId: "customer-id",
-})
-```
-
-### Server Functions
-
-`execute` waits for a terminal execution response. `executeAsync` requests asynchronous execution and returns the pending execution record.
-
-```typescript
-const completed = await mitra.functions.execute("function-id", { orderId: "order-id" })
-const pending = await mitra.functions.executeAsync("function-id", { orderId: "order-id" })
-const current = await mitra.functions.getExecution(pending.id)
-await mitra.functions.cancelExecution(pending.id)
-```
-
-### Integrations
-
-```typescript
-const resource = await mitra.integration.executeResource("resource-id", {
-  description: "Notebook",
-})
-
-const proxy = await mitra.integration.execute("config-id", {
-  method: "GET",
-  endpoint: "/users",
-  queryParams: { limit: "10" },
-})
-```
-
-Credentials configured for an integration are injected by the Integration service. Do not pass provider credentials through function input.
-
-Use `integrationAdmin.list()` as the native equivalent of `listIntegrationsMitra`. It calls
-`GET /integration/api/v1/template-configs`; the service filters app-scoped runtime tokens to the
-current app and returns its real paginated `TemplateConfigSummary` values.
-
-Native entity methods target the public Data Manager records API, which resolves the app Data
-Source from the runtime token. That API does not accept the legacy `jdbcConnectionConfigId`
-selector, so records that depend on it remain available only through the deprecated bridge. The
-SDK does not emulate that selection with raw SQL.
-
-### Native modules
-
-The native client exposes all 24 application runtime and authoring modules from
-`@mitralab.io/sdk-core` directly against the owning services. `currentApp` is an additional
-Functions-specific convenience facade over the Core `apps` module:
-
-| Area                     | Modules                                                                           | Service                                 |
-| ------------------------ | --------------------------------------------------------------------------------- | --------------------------------------- |
-| Identity and members     | `auth`, `members`                                                                 | IAM                                     |
-| Data                     | `dataSources`, `schema`, `entities`, `customQueries`, `queries`, `sql`, `imports` | Data Manager                            |
-| Functions and automation | `functions`, `functionsAdmin`, `agents`, `workflows`                              | Functions                               |
-| Apps                     | `apps`, `currentApp`, `context`                                                   | Code Studio and composed native modules |
-| Agent runtime            | `agentTasks`, `agentCredentials`, `agentConnections`                              | Copilot                                 |
-| Integrations             | `integration`, `integrationAdmin`, `integrationTemplates`, `integrationResources` | Integration                             |
-| Notifications            | `messenger`                                                                       | Messenger                               |
-| Anonymous execution      | `publicFunctions`                                                                 | Functions public API                    |
-
-These modules do not use the BFF gateway. The BFF remains only behind the deprecated
-`mitra-sdk` compatibility exports described below.
-
-Single-Function `functionsAdmin.create()` and `functionsAdmin.patch()` expose
-`cronExpression`, `cronInputJson`, and `cronEnabled` as one composed scheduling unit. On create,
-omit all three for no schedule; supplying any one requires a non-blank expression. The new schedule
-uses `UTC` and starts `ACTIVE` unless `cronEnabled` is `false`. On patch, null or omitted schedule
-fields preserve their stored values, an empty input object clears the scheduled input, and a blank
-expression removes the schedule. A non-blank expression can create a missing schedule in `UTC`,
-while `cronEnabled` explicitly pauses or resumes it. Schedule composition requires
-`SCHEDULE_WRITE` and `FUNCTION_EXECUTE` in addition to the Function write permission.
-
-Function `get()` and `list()` include all three cron fields when the caller has `SCHEDULE_READ`.
-Without it, the fields are all null without consulting Scheduler. A Function with no schedule has
-the same all-null shape, so those responses alone cannot distinguish absence from missing read
-permission. Function bulk create, update, and patch prohibit all three cron fields; use the
-single-Function methods for composed scheduling.
-
-The native SDK deliberately has no separate schedule lifecycle methods. Create, patch, get, and
-list keep Function state and its composed cron fields in one contract.
-
-### Live Agent sessions
-
-`agentTasks.session()` adds the Core session state machine to the native Copilot task module.
-Core also owns the direct channel to the chat's box: the session asks the Copilot where the chat
-is served (`POST /copilot/api/v1/tasks/{taskId}/channel`) and then talks to that box, which runs
-the turn. This package only wires the channel to the client's API URL and WebSocket.
-
-Only an agent chat, a task with an `agentId`, goes to the box, whether the session creates it or
-opens it with `session({ taskId })`. A chat without `agentId` keeps the Copilot stream and inputs
-as before and never asks for the channel.
-
-```typescript
-const session = mitra.agentTasks.session({
-  create: true,
-  agentId: "agent-id",
-  agentType: "CODEX",
-})
-
-session.on("delta", ({ delta, kind }) => {
-  console.log(kind, delta)
-})
-
-const result = await session.sendAndWait("Summarize today's orders")
-console.log(result.content)
-session.close()
-```
-
-Existing tasks use `mitra.agentTasks.session({ taskId })`. A new agent chat is created on the
-box runtime (`runtime: "T3"`) unless the session names another runtime.
-
-`transport` picks how the session tries to reach the box:
-
-- `auto`, the default, uses the box WebSocket when the runtime has one and the box HTTP routes
-  otherwise: a `POST` per message and a Server-Sent Events (SSE) stream for events.
-- `http` uses the box HTTP routes.
-- `websocket` uses the box WebSocket.
-
-Until the box offers the route the session asks for, the session falls back to the Copilot and
-says so with `channelDeclined` (see below). The transport is a preference, not a guarantee.
-
-The Serverless Functions runtime runs Node 20, which has no global `WebSocket`, so sessions
-there reach the box over HTTP. Node 22 and newer have one. To use the socket on a runtime without
-it, pass an implementation such as `ws` when you create the client; this package does not depend
-on one:
-
-```typescript
-import WebSocket from "ws"
-
-const mitra = createClient({ WebSocket })
-```
-
-The box is reached through the channel URL the Copilot returns, which carries a short-lived
-grant; the runtime token is never sent to the box. The box routes use `globalThis.fetch`, not the
-`fetch` given to the client, so a custom fetch that adds `Authorization` cannot leak the token
-there. Core follows only a channel on the configured
-API host or a Mitra box host. When the Copilot offers no channel, or the offer cannot be followed
-(for example a `websocket` session with no WebSocket available), the session stays on the
-Copilot: it opens `GET /copilot/api/v1/tasks/{taskId}/events` as an SSE stream with the runtime
-token in `Authorization` plus `X-App-Id`, and sends input to `POST /inputs`. That fallback is
-never silent: the session first emits a `raw` event of type `channelDeclined` with the reason.
-
-`timeoutMs` also bounds `POST /channel`, which the Copilot holds open while the box boots. A
-short `timeoutMs` can abort that request, and the session then falls back to the Copilot with
-`channelDeclined` reason `unavailable`; leave it unset, or above the box boot time, for agent
-chats. On the Copilot stream, `timeoutMs` applies only while waiting for the SSE response
-headers. The parser ignores `hello` and `ping` keepalives, and a stream silent for 60 seconds counts
-as a disconnect; Core then reconnects once and reconciles persisted messages. The box channel has
-its own handshake, silence, redial, and admission deadlines in Core.
-
-#### Send and return
-
-A Function does not have to wait for the whole turn. Once the box admits the message, the turn
-runs and is recorded without the Function, so it can send, wait for `accepted`, and return:
-
-```typescript
-export async function handler(input: { taskId: string; prompt: string }) {
-  const session = mitra.agentTasks.session({ taskId: input.taskId })
   try {
-    await new Promise<void>((resolve, reject) => {
-      session.on("accepted", () => resolve())
-      session.on("error", ({ code, error }) =>
-        reject(new Error(code ? `${code}: ${error}` : error)),
-      )
-      session.send(input.prompt)
-    })
-    return { accepted: true }
-  } finally {
-    session.close()
+    const order = await mitra.entities.Order.get(input.orderId)
+    const completed = await mitra.functions.execute("function-id", { orderId: input.orderId })
+    return { order, completed }
+  } catch (error) {
+    if (error instanceof MitraApiError && error.status === 404) return { order: null }
+    throw error
   }
 }
 ```
 
-`accepted` fires when the box starts the admitted turn, or after the Copilot's `202` on the
-fallback. A refusal fires `error` instead, and a box that does not answer fails the send after
-35 seconds. Returning before `accepted` may lose the message.
+Fora do runtime, `await createClientFromApiKey({ apiUrl, apiKey, appId })` troca a chave por um token já na criação, para chave inválida falhar ali e não numa chamada qualquer depois.
 
-### App-scoped Code Studio access
+## Contratos e armadilhas
 
-The Functions runtime is fixed to the configured `appId`. `apps.list()` and `apps.create()`
-reject locally because they are tenant-level operations. Every other `apps` method rejects
-an app ID different from the configured runtime app before making a request.
+- O SDK faz uma tentativa por requisição e não repete, para não reexecutar escrita. `retryable` é só diagnóstico. A exceção é o cliente por API key: num `401`, ele troca a chave por um token novo e repete aquela requisição uma vez.
+- `apps.list()` e `apps.create()` falham localmente com `MitraConfigurationError`, e os demais métodos de `apps` recusam um `appId` diferente do configurado. Prefira `currentApp`. Essa checagem evita engano, mas não é fronteira de segurança: quem autoriza é a claim `app_id` do JWT (JSON Web Token) no serviço.
+- O token do runtime não tem `MEMBER_READ` nem as permissões de secret de Function: `members.list()` e as operações de secret respondem `403`. Os métodos ficam no tipo porque outro token pode ter a permissão.
+- `agentTasks.session()` chega à box do agente por WebSocket ou, sem ele, pelas rotas HTTP da box. O runtime de Functions roda Node 20, sem `WebSocket` global; passe `ws` em `createClient({ WebSocket })` se quiser o socket. As rotas da box usam o `fetch` global, nunca o `fetch` do cliente, para um `fetch` que injeta `Authorization` não vazar o token para a box.
+- Um `timeoutMs` curto também corta o `POST /channel`, que o Copilot segura enquanto a box sobe, e a sessão cai no stream do Copilot com `channelDeclined`. Nesse stream, 60 segundos sem evento contam como queda.
+- Function que só dispara um prompt pode retornar depois do evento `accepted`: dali em diante o turno roda e é registrado sem ela. Retornar antes de `accepted` pode perder a mensagem.
 
-Use `currentApp` when possible. It exposes the same current-app lifecycle without repeating
-the app ID:
+## Contrato com o Core
 
-```typescript
-const app = await mitra.currentApp.get()
-const published = await mitra.currentApp.get({ version: "PUBLISHED" })
-await mitra.currentApp.update({ name: "Orders" })
-await mitra.currentApp.mergeFiles({ "src/generated.ts": "export const ready = true" })
-const previewDeploy = await mitra.currentApp.build()
-await mitra.currentApp.publish({ externalAccess: true })
-```
+`contracts/sdk-core-v<versão>.manifest.json` fixa a versão do Core, o SHA-256 do corpus SDK-PARITY-001 e o commit de origem no `mitra-core-sdk`. `npm run check:contracts` compara o corpus instalado com o manifest; `npm run check:contracts:source`, que também roda no `prepublishOnly`, compara com o arquivo no GitHub byte a byte. Trocar a versão do Core pede um manifest novo e apontar `scripts/check-contract-corpus.mjs` para ele.
 
-`build()` returns the `AppDeploy` created for preview polling. `get()` preserves the Core
-`AppGetOptions`, and `publish()` preserves `AppPublishOptions`.
+## SDK legado
 
-The client-side check prevents accidental cross-app calls, but it is not a security boundary.
-Code Studio must also enforce the JWT `app_id` claim in the backend. Until that enforcement is
-deployed, the access token must be treated as sensitive even though this SDK fixes the app ID.
+A superfície de runtime e de tipos do `mitra-sdk` é reexportada como `@deprecated`, para código de Function existente trocar a dependência sem reescrever imports. `createClient()` configura o SDK legado com `legacyBaseUrl`, o token e o `appId` como `projectId`. Fluxos de Git do builder (`getGitConfigMitra`) e S3 direto (`deployToS3Mitra`) só existem no legado. Os nomes legados `AgentConnection`, `AgentMessage`, `AgentModel` e `ListTablesOptions` mantêm o significado antigo; os do Core saem com prefixo `Core`.
 
-### Public Functions
+## Erros
 
-`publicFunctions` calls `/functions/public/v1` with a dedicated anonymous transport. It never
-sends `Authorization` or `X-App-Id`.
+`MitraApiError` traz `status`, `code`, `details`, `requestId` e `retryable`. O token é mascarado na mensagem e nos detalhes.
 
-```typescript
-const result = await mitra.publicFunctions.execute("public-function-id", { value: 1 })
-const queued = await mitra.publicFunctions.executeAsync("public-function-id", { value: 1 })
-```
+| Classe e `code`                                                   | Quando                                                                                                          |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `MitraConfigurationError`                                         | configuração ausente ou inválida, path vazio, operação de app fora do escopo                                    |
+| `MitraApiError` com o código da API                               | resposta HTTP de erro, inclusive 3xx (redirect não é seguido); `retryable` vem do corpo ou é `true` só para 5xx |
+| `MitraApiError`, `REQUEST_TIMEOUT` ou `NETWORK_ERROR`             | prazo estourado ou falha de rede, com `status` `0` e `retryable` `true`                                         |
+| `MitraApiError`, `INVALID_RESPONSE`                               | resposta de sucesso fora do contrato                                                                            |
+| `MitraApiError`, `INVALID_CREDENTIALS` ou `AUTHENTICATION_FAILED` | a troca da API key falhou (`401` ou outro status)                                                               |
+| `AgentTaskTurnError`                                              | `sendAndWait()` com turno de agente recusado ou com erro; `code` traz o código do serviço, quando veio          |
 
-An asynchronous public execution returns its ID and initial status as fire-and-forget. The public
-API does not expose anonymous polling or cancellation. Use synchronous `execute` when the caller
-needs the result, or authenticated `functions.executeAsync` plus `functions.getExecution` when the
-caller has an app-scoped token.
-
-## Runtime authorization
-
-The JWT `app_id` claim is the authority for application scope. `X-App-Id` carries runtime
-context for protected service requests and must not be used by a backend as the authorization
-boundary.
-
-Against the current `origin/alpha` service and IAM policies, 109 of the 120 MCP capabilities
-are usable or authorizable from an app-scoped Server Function. The `dataSources.bulk*` methods
-compose the existing singular Data Manager endpoints, so they do not require a coordinated
-service rollout. The remaining capabilities have these known constraints:
-
-| Capability                            | Runtime behavior                                            | Reason                                                                                                             |
-| ------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Member reads through `members.list()` | `403 INSUFFICIENT_PERMISSIONS`                              | `MEMBER_READ` is deliberately absent from the SF token policy. App context excludes members.                       |
-| Function secret list/create/delete    | `403 INSUFFICIENT_PERMISSIONS`                              | `FUNCTION_SECRET_READ`, `FUNCTION_SECRET_WRITE`, and `FUNCTION_SECRET_DELETE` are absent from the SF token policy. |
-| Agent runtime operations              | Configuration or service rejection without an agent context | The runtime must inject or otherwise provide the applicable `agent_id`.                                            |
-| `apps.list()` and `apps.create()`     | Local `MitraConfigurationError`                             | Tenant-level app collection operations are not applicable to an app-scoped runtime.                                |
-| `messenger.notify()`                  | Depends on the authenticated user's channel                 | The call is authorized, but delivery requires a configured notification channel.                                   |
-
-The methods remain part of the typed API so clients with a different authorized token can use
-the shared contract. This SDK does not broaden IAM permissions or retry a rejected operation.
-
-### Core and legacy type names
-
-The deprecated `AgentConnection`, `AgentMessage`, `AgentModel`, and `ListTablesOptions` names keep
-their original `mitra-sdk` meanings for source compatibility. Import the native Core contracts as
-`CoreAgentConnection`, `CoreAgentMessage`, `CoreAgentModel`, and `CoreListTablesOptions`.
-
-The deprecated package also owns `AgentTaskSession`, `AgentTimelineItem`, and `AgentToolEvent`.
-Their native equivalents are exported as `CoreAgentTaskSession`, `CoreAgentTimelineItem`, and
-`CoreAgentToolEvent`. New session options and results are available as
-`CoreAgentTaskSessionOptions`, `AgentSendOptions`, `AgentSendAndWaitOptions`, and `AgentTurnResult`.
-`sendAndWait()` rejects Agent turn failures with `AgentTaskTurnError`, preserving the service error
-code when one is present.
-
-## Errors and request behavior
-
-API, timeout, invalid response, and network failures throw `MitraApiError`. The error exposes `status`, `code`, `details`, `requestId`, and `retryable`, preserving API metadata when it is provided. Configuration failures throw `MitraConfigurationError`.
-
-When an API error omits `retryable`, the HTTP adapter classifies 4xx responses
-as `false` and 5xx responses as `true`. This field is diagnostic classification
-only. The SDK still makes one attempt and never retries a request automatically.
-
-The Python package uses idiomatic specialized names for local failures. JavaScript `REQUEST_TIMEOUT` and `NETWORK_ERROR` map to Python `MitraNetworkError`, while JavaScript `INVALID_RESPONSE` maps to Python `MitraResponseError`. API responses use `MitraApiError` in both packages.
-
-Every protected request sends `Authorization: Bearer <token>` and `X-App-Id`. Public Function
-requests send neither header. Requests have no adapter-level deadline by default, so normal
-long-running platform operations remain governed by the Server Function runtime. Set `timeoutMs`
-to opt into a per-request deadline. Requests are never retried automatically, which avoids
-replaying writes with unknown idempotency.
-
-The access token is redacted from API error messages and error details.
-
-## Contract parity
-
-The test suite reads SDK-PARITY-001 version 0.2.0-beta.1 directly from the installed
-`@mitralab.io/sdk-core` package. The `sdk-core-v0.2.0-beta.1` manifest pins the expected package
-version, contract path, SHA-256 digest, and immutable source commit. The release gate rejects
-publication unless the installed corpus matches its raw GitHub source byte for byte.
-
-The JavaScript consumer requirement is exactly `httpAdapterCases: all`. Tests
-execute all recorded 404, 503, and timeout cases through the public client and
-the real `HttpClient`, using a mock fetch only at the network boundary. They
-verify the request and the complete error semantics. Continuous integration and
-release gates also download the canonical file from the public Core repository
-at the pinned commit and compare it byte for byte with the installed package.
-
-## Scope
-
-The current draft expands the native client from the initial runtime operations to the complete
-Core 0.2.0-beta.1 module surface listed above. Availability still depends on the runtime token
-resources and the service constraints in the authorization matrix.
-
-## Legacy compatibility
-
-The runtime and type surface of `mitra-sdk@1.0.63-beta.39` is re-exported so existing Server
-Function code can adopt `@mitralab.io/functions-sdk` without an import rewrite. Browser-only
-bindings that exist only in `mitra-interactions-sdk`, including login and token refresh, are not
-part of this package. Every re-export is the legacy binding itself, unchanged, and is marked
-`@deprecated` with the new equivalent when one exists. Native raw SQL is available through `sql`;
-app authoring and Agent runtime modules cover most builder and Agent SDK operations. Builder-specific
-Git and direct-S3 flows have no one-to-one replacement and remain supported through the legacy
-exports. Live Agent sessions have a native replacement through `agentTasks.session()`.
-
-`getGitConfigMitra` remains legacy-only because credential minting is an internal Sandbox POST
-authenticated between services and is not published for app tokens. The Sandbox already owns Git
-setup and token renewal for Agent workspaces; the native Functions client does not expose that
-secret-producing endpoint.
-
-```typescript
-import { createClient, listProjectsMitra } from "@mitralab.io/functions-sdk"
-
-createClient()
-const projects = await listProjectsMitra()
-```
-
-`createClient()` and `createClientFromEnvironment()` configure the deprecated SDK with
-`MITRA_BASE_URL`, the resolved access token, and the app ID, so legacy code does not read the
-environment itself. Native modules use the canonical API root directly and never route through the
-BFF, even when that root was derived from an existing `MITRA_BASE_URL` value.
-For explicit local configuration, `legacyBaseUrl` selects the deprecated BFF base; it falls back to
-`apiUrl` only when omitted. The deprecated SDK receives `appId` as its `projectId` and accepts the
-access token with or without a `Bearer` prefix.
-
-The direct legacy dependency is pinned to the exact `mitra-sdk` version. Nothing in it is modified
-or published by this package.
-
-## Development
+## Desenvolvimento
 
 ```bash
 npm install
 npm run check
 ```
 
-The adapter pins `@mitralab.io/sdk-core@0.2.0-beta.1` exactly and installs it from the public npm
-registry, so the checked-in `package-lock.json` carries the registry `resolved` URL and integrity
-for that exact version and `npm ci` reproduces it. Do not use a `file:` dependency or `npm link`.
-
-To validate against a Core build that is not published yet, supply a tarball without changing
-dependency metadata or the final lockfile:
-
-```bash
-npm install --no-save --package-lock=false /path/to/mitralab.io-sdk-core-0.2.0-beta.1.tgz
-npm run lint && npm run typecheck && npm test && npm run build
-MITRA_SDK_CORE_TARBALL=/path/to/mitralab.io-sdk-core-0.2.0-beta.1.tgz npm run smoke:package
-git diff --exit-code -- package-lock.json
-```
-
-## Release order
-
-Core moves first, then this package follows. `<core-version>` below is the Core release being
-adopted, for example `0.2.0-beta.1`.
-
-1. Merge and publish `@mitralab.io/sdk-core@<core-version>` under npm's `beta` dist-tag from its
-   immutable source commit.
-2. Add `contracts/sdk-core-v<core-version>.manifest.json` carrying that full commit SHA:
-
-   ```json
-   {
-     "source": {
-       "repository": "https://github.com/mitralab-dev/mitra-core-sdk",
-       "commit": "<full-core-commit-sha>",
-       "path": "contracts/v<core-version>/sdk-parity.json"
-     }
-   }
-   ```
-
-   Point `scripts/check-contract-corpus.mjs` and the tests that read a manifest at the new file, so
-   the gate verifies the version being adopted.
-
-3. Run `npm install --package-lock-only`, then verify that the Core lock entry is exactly
-   `<core-version>` with an npm registry URL and integrity.
-4. Run `npm ci`, `npm run check`, and `npm run check:contracts:source`.
-5. Publish this package under npm's `beta` dist-tag through the release workflow and run the
-   tarball smoke against the registry.
-
-Steps 1 to 3 are already done for the current `0.2.0-beta.1` pin: Core is published, the manifest
-carries its immutable source commit, and the lock records the registry `resolved` URL and integrity.
-Steps 4 and 5 remain.
-
-Stable `X.Y.Z` releases use npm's default `latest` dist-tag. The workflow accepts only that stable
-form or the prerelease form `X.Y.Z-beta.N`.
-
-`prepublishOnly` repeats the immutable-source check, so a direct `npm publish` cannot bypass the
-pending Core provenance.
-
-The contract source can be checked explicitly without changing the manifest or
-lockfile:
-
-```bash
-node scripts/check-contract-corpus.mjs --canonical /path/to/sdk-parity.json
-```
-
-The package builds ESM, CommonJS, and TypeScript declarations in `dist/`. Tests enforce at least 80 percent coverage for lines, functions, branches, and statements.
+O `check` roda format, lint, typecheck, testes (cobertura mínima de 80%), build, conferência dos exports e do contrato, e um smoke test do tarball. Para validar contra um Core ainda não publicado, aponte `MITRA_SDK_CORE_TARBALL` para o tarball no `smoke:package`. Não use dependência `file:` nem `npm link`.
