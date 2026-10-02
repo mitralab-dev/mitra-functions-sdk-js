@@ -14,7 +14,7 @@ Node 18 ou mais novo, ou outro runtime com `fetch` global. Traz `@mitralab.io/sd
 
 `createClient(config?)` usa cada campo de `config` e cai na variável de ambiente quando o campo falta. `createClientFromEnvironment(env)` lê só de um objeto de ambiente, útil em teste.
 
-No runtime de Functions, o serviço injeta `MITRA_BASE_URL` (com `/legacy` no fim), `MITRA_TOKEN` e `MITRA_PROJECT_ID`, então `createClient()` funciona sem argumento.
+No runtime de Functions, o serviço injeta `MITRA_BASE_URL` (com `/legacy` no fim), `MITRA_TOKEN` e `MITRA_PROJECT_ID`, então `createClient()` funciona sem argumento. Execução sem usuário que a invoque (passo de workflow, por exemplo) não recebe essas variáveis.
 
 | Campo                | Variável                                                    | Obrigatória                    | Uso                                                                                                                                                                                     |
 | -------------------- | ----------------------------------------------------------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
