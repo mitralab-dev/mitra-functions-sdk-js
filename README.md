@@ -14,6 +14,8 @@ Node 18 ou mais novo, ou outro runtime com `fetch` global. Traz `@mitralab.io/sd
 
 `createClient(config?)` usa cada campo de `config` e cai na variável de ambiente quando o campo falta. `createClientFromEnvironment(env)` lê só de um objeto de ambiente, útil em teste.
 
+No runtime de Functions, o serviço injeta `MITRA_BASE_URL` (com `/legacy` no fim), `MITRA_TOKEN` e `MITRA_PROJECT_ID`, então `createClient()` funciona sem argumento.
+
 | Campo                | Variável                                                    | Obrigatória                    | Uso                                                                                                                                                                                     |
 | -------------------- | ----------------------------------------------------------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `apiUrl`             | `MITRA_API_URL`, ou `MITRA_BASE_URL` sem o `/legacy` do fim | sim                            | URL HTTP(S) do API gateway, sem credencial, query ou fragmento; os serviços saem dela (`/iam`, `/data-manager`, `/functions`, `/integration`, `/code-studio`, `/copilot`, `/messenger`) |
