@@ -30,7 +30,12 @@ Dentro do runtime, `createClient()` lê a URL, o token e o app das variáveis de
 Fora do runtime, num processo seu, autentique com uma API key criada em Configurações, API keys. `createClientFromApiKey()` lê `MITRA_API_URL`, `MITRA_APP_ID` e `MITRA_API_KEY` e já troca a chave por um token, para uma chave errada falhar ali:
 
 ```javascript
-const mitra = await createClientFromApiKey()
+const { createClientFromApiKey } = require("@mitralab.io/functions-sdk")
+
+async function loadOrder(orderId) {
+  const mitra = await createClientFromApiKey()
+  return mitra.entities.Order.get(orderId)
+}
 ```
 
 ## O que dá para fazer
@@ -50,11 +55,11 @@ const mitra = await createClientFromApiKey()
 
 | Campo         | Variável                                       | Obrigatório                    | Uso                                                                                                                                          |
 | ------------- | ---------------------------------------------- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apiUrl`      | `MITRA_API_URL`                                | sim                            | URL HTTP ou HTTPS do API gateway da Mitra, sem credencial, query ou fragmento                                                                |
+| `apiUrl`      | `MITRA_API_URL` ou `MITRA_BASE_URL`            | sim                            | URL HTTP ou HTTPS do API gateway da Mitra, sem credencial, query ou fragmento                                                                |
 | `accessToken` | `MITRA_PLATFORM_ACCESS_TOKEN` ou `MITRA_TOKEN` | sim, exceto com API key        | token do runtime, enviado como `Bearer`                                                                                                      |
 | `appId`       | `MITRA_APP_ID` ou `MITRA_PROJECT_ID`           | sim                            | app em que o cliente atua                                                                                                                    |
 | `apiKey`      | `MITRA_API_KEY`                                | só em `createClientFromApiKey` | chave do app, para processo fora do runtime                                                                                                  |
-| `timeoutMs`   |                                                | não                            | prazo por requisição; sem ele, vale o limite de tempo da Function                                                                            |
+| `timeoutMs`   |                                                | não                            | prazo por requisição; sem ele, o SDK não impõe prazo, e dentro de uma Function vale o limite de tempo dela                                   |
 | `fetch`       |                                                | não                            | implementação de `fetch`; sem ela, usa a global                                                                                              |
 | `WebSocket`   |                                                | não                            | implementação de WebSocket, como a do pacote `ws`, para a sessão de agente usar socket; sem ela, vale o WebSocket global, se houver, ou HTTP |
 
