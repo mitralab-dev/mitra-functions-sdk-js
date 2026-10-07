@@ -83,6 +83,7 @@ async function loadOrder(orderId) {
 - O SDK faz uma tentativa por requisição e não repete, para não gravar duas vezes. `retryable` é só uma dica. O cliente por API key é a exceção: num `401`, ele pega um token novo e repete aquela requisição uma vez.
 - Para o app da Function, use `currentApp`. `apps` só aceita o próprio app, e `apps.list()` e `apps.create()` não existem aqui.
 - Function que só dispara um prompt para um agente pode retornar depois do evento `accepted`. Antes dele, o prompt pode se perder.
+- `cancel()` chamado enquanto o prompt ainda está a caminho espera a box aceitar a mensagem e só então interrompe o turno; aguarde a promessa dele antes de dar o chat por parado. Se a box recusar a mensagem, nenhum stop sai e o evento `cancelled` não é emitido, então o stop não interrompe um turno seguinte.
 - API key fica em variável de ambiente de processo de servidor, nunca em código de browser nem no repositório.
 
 ## Migração do `mitra-sdk`
