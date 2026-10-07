@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## 0.2.7
+
+Stable release of the 0.2.7-beta.0 line, already on the `beta` tag. This release only moves the
+Core dependency to its stable number, so no runtime behavior in this package changes.
+
+- Depend on `@mitralab.io/sdk-core@0.2.12`, the stable release of the 0.2.12-beta.1 surface: a
+  `cancel()` pressed before the agent turn starts waits for the box to admit the prompt and goes out
+  right after it.
+- Pin the SDK-PARITY-001 corpus to Core `0.2.12` with its digest and immutable source commit.
+
 ## 0.2.7-beta.0
 
 - Depend on `@mitralab.io/sdk-core@0.2.12-beta.1`: a `cancel()` pressed before the agent turn starts
