@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## 0.2.8-beta.0
+
+- `init()` resolves without any network call. It used to fetch `GET /code-studio/api/v1/apps/<id>/info`
+  only to keep a data source id that no operation reads, and that public route is rate limited per
+  IP, so Functions sharing an e2b host failed at startup with 429. `await client.init()` still works,
+  and `dataSourceId` and `MITRA_DATA_SOURCE_ID` are still accepted.
+
 ## 0.2.7
 
 Stable release of the 0.2.7-beta.0 line, already on the `beta` tag. This release only moves the
