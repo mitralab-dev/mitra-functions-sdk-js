@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## 0.2.8
+
+Stable release of the 0.2.8-beta.0 line, already on the `beta` tag and running in the dev Functions
+template. No change on top of the beta.
+
+- `init()` resolves without any network call instead of fetching the app info route, which is rate
+  limited per IP. `await client.init()`, `dataSourceId` and `MITRA_DATA_SOURCE_ID` still work.
+
 ## 0.2.8-beta.0
 
 - `init()` resolves without any network call. It used to fetch `GET /code-studio/api/v1/apps/<id>/info`
