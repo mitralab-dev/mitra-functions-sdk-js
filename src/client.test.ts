@@ -512,7 +512,7 @@ describe("initialization", () => {
     expect(typeof client.agentConnections.deleteCustomProvider).toBe("function")
   })
 
-  it("does not request app info when a data source is configured", async () => {
+  it("still accepts a configured data source and initializes without network calls", async () => {
     const fetch = mockFetch()
     const client = createClient({ ...config, fetch })
 
@@ -521,21 +521,31 @@ describe("initialization", () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 
-  it("resolves the data source once for concurrent calls", async () => {
-    const fetch = mockFetch(
-      json({ dataSourceId: "resolved-data-source" }),
-      json({ rows: [], affectedRows: null, durationMs: 4 }),
-    )
+  it("initializes without network calls, also when repeated and concurrent", async () => {
+    const fetch = mockFetch()
     const client = createClient({ ...configWithoutDataSource, fetch })
 
-    await Promise.all([client.init(), client.init()])
-    await client.queries.execute("query/one", { active: true })
+    await expect(Promise.all([client.init(), client.init()])).resolves.toEqual([
+      undefined,
+      undefined,
+    ])
+    await expect(client.init()).resolves.toBeUndefined()
 
-    expect(fetch).toHaveBeenCalledTimes(2)
-    expect(requestAt(fetch).url).toBe(
-      "https://api.example.com/code-studio/api/v1/apps/app%2Fone/info",
-    )
-    expect(JSON.parse(String(requestAt(fetch, 1).init.body))).toEqual({
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it("executes app-scoped queries after init without resolving the data source", async () => {
+    const fetch = mockFetch(json({ rows: [], affectedRows: null, durationMs: 1 }))
+    const client = createClient({ ...configWithoutDataSource, fetch })
+
+    await client.init()
+    await expect(client.queries.execute("query-id", { active: true })).resolves.toMatchObject({
+      rows: [],
+    })
+
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(requestAt(fetch).url).not.toContain("/code-studio/")
+    expect(JSON.parse(String(requestAt(fetch).init.body))).toEqual({
       parameters: { active: true },
     })
   })
@@ -547,31 +557,6 @@ describe("initialization", () => {
 
     await expect(client.entities.Task!.list()).resolves.toEqual(records)
     await expect(client.queries.execute("query-id")).resolves.toMatchObject({ rows: [] })
-  })
-
-  it("rejects app info without a data source and allows a later retry", async () => {
-    const fetch = mockFetch(json({ allowSignup: true }), json({ dataSourceId: "resolved" }))
-    const client = createClient({ ...configWithoutDataSource, fetch })
-
-    await expect(client.init()).rejects.toMatchObject({
-      code: "INVALID_RESPONSE",
-      retryable: false,
-      status: 200,
-    })
-    await expect(client.init()).resolves.toBeUndefined()
-    expect(fetch).toHaveBeenCalledTimes(2)
-  })
-
-  it("initializes an app without a Data Source and still executes app-scoped queries", async () => {
-    const fetch = mockFetch(
-      json({ dataSourceId: null }),
-      json({ rows: [], affectedRows: null, durationMs: 1 }),
-    )
-    const client = createClient({ ...configWithoutDataSource, fetch })
-
-    await expect(client.init()).resolves.toBeUndefined()
-    await expect(client.queries.execute("query-id")).resolves.toMatchObject({ rows: [] })
-    expect(JSON.parse(String(requestAt(fetch, 1).init.body))).toEqual({ parameters: {} })
   })
 })
 
@@ -1272,9 +1257,6 @@ describe("path safety", () => {
     await expect(
       client.integration.execute(".", { method: "GET", endpoint: "/users" }),
     ).rejects.toThrow("must not be a dot segment")
-    await expect(
-      createClient({ ...configWithoutDataSource, appId: "..", fetch }).init(),
-    ).rejects.toThrow("must not be a dot segment")
 
     expect(fetch).not.toHaveBeenCalled()
   })
@@ -1295,7 +1277,7 @@ describe("HTTP failures", () => {
   })
 
   it("rejects non-object success payloads across modules", async () => {
-    const fetch = mockFetch(json(null), json([]), json(null), json([]), json(null))
+    const fetch = mockFetch(json(null), json([]), json(null), json([]))
     const client = createClient({ ...config, fetch })
 
     await expect(client.auth.me()).rejects.toMatchObject({ code: "INVALID_RESPONSE" })
@@ -1306,9 +1288,6 @@ describe("HTTP failures", () => {
       code: "INVALID_RESPONSE",
     })
     await expect(client.integration.executeResource("resource-id")).rejects.toMatchObject({
-      code: "INVALID_RESPONSE",
-    })
-    await expect(createClient({ ...configWithoutDataSource, fetch }).init()).rejects.toMatchObject({
       code: "INVALID_RESPONSE",
     })
   })

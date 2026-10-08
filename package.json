@@ -1,6 +1,6 @@
 {
   "name": "@mitralab.io/functions-sdk",
-  "version": "0.2.7",
+  "version": "0.2.8-beta.0",
   "description": "JavaScript and TypeScript SDK for Mitra Server Functions",
   "type": "module",
   "sideEffects": false,
