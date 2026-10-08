@@ -1,8 +1,6 @@
 import {
   createAgentTaskSessionManager,
   createSdkCore,
-  encodePathSegment,
-  expectObject,
   withAgentTaskSessions,
   type AuthModule,
   type SdkCore,
@@ -18,14 +16,9 @@ import { createApiKeyTokenProvider } from "./api-key"
 import { coreErrors } from "./core-errors"
 import { resolveApiKeyOptions, resolveConfig } from "./config"
 import type { ResolvedMitraClientConfig } from "./config"
-import { MitraApiError } from "./errors"
 import { HttpClient } from "./http-client"
 import { configureLegacySdk } from "./legacy/configure"
 import type { MitraClientConfig, MitraEnvironment } from "./types"
-
-interface AppInfoResponse {
-  dataSourceId: string | null
-}
 
 export interface MitraClient {
   init(): Promise<void>
@@ -83,14 +76,10 @@ class DefaultMitraClient implements MitraClient {
   readonly sql: SdkCore["sql"]
   readonly workflows: SdkCore["workflows"]
 
-  #dataSourceId: string | undefined
-  #initPromise: Promise<void> | undefined
   readonly #appId: string
-  readonly #codeStudioHttpClient: HttpClient
 
   constructor(config: ResolvedMitraClientConfig) {
     this.#appId = config.appId
-    this.#dataSourceId = config.dataSourceId
 
     const httpClient = (service: string) =>
       new HttpClient({
@@ -172,36 +161,11 @@ class DefaultMitraClient implements MitraClient {
     this.schema = core.schema
     this.sql = core.sql
     this.workflows = core.workflows
-    this.#codeStudioHttpClient = httpClient("code-studio")
   }
 
   init(): Promise<void> {
-    if (this.#dataSourceId) return Promise.resolve()
-    if (!this.#initPromise) {
-      this.#initPromise = this.resolveDataSourceId().catch((error: unknown) => {
-        this.#initPromise = undefined
-        throw error
-      })
-    }
-    return this.#initPromise
-  }
-
-  private async resolveDataSourceId(): Promise<void> {
-    const appInfo = expectObject<AppInfoResponse>(
-      await this.#codeStudioHttpClient.get<unknown>(
-        `/api/v1/apps/${encodePathSegment(this.#appId, "appId", coreErrors)}/info`,
-      ),
-      "App info response",
-      coreErrors,
-    )
-    if (appInfo.dataSourceId === null) return
-    if (typeof appInfo.dataSourceId !== "string" || !appInfo.dataSourceId.trim()) {
-      throw new MitraApiError("The app info response does not include a dataSourceId", 200, {
-        code: "INVALID_RESPONSE",
-        retryable: false,
-      })
-    }
-    this.#dataSourceId = appInfo.dataSourceId
+    // Kept for compatibility: no operation reads the data source, so there is nothing to resolve.
+    return Promise.resolve()
   }
 }
 
