@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## 0.2.9
+
+- Depend on `@mitralab.io/sdk-core@0.2.13`: `AgentTurnUsage` gains `contextTokens`, the tokens
+  occupying the chat's context window at the end of the turn (subagents excluded), and
+  `contextWindow`, the model's window size. Both are absent when the box does not report them.
+- Pin the SDK-PARITY-001 corpus to Core `0.2.13` with its digest and immutable source commit.
+
 ## 0.2.8
 
 Stable release of the 0.2.8-beta.0 line, already on the `beta` tag and running in the dev Functions
