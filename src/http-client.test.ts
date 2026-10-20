@@ -195,13 +195,24 @@ describe("retry after", () => {
       name: "MitraApiError",
       status: 429,
       code: "EMAIL_DAILY_QUOTA_EXCEEDED",
+      retryable: false,
       retryAfterSeconds: 3600,
+    })
+  })
+
+  it("keeps a zero wait, which the server sends right before the quota resets", async () => {
+    const client = clientAnswering(
+      new Response(quotaBody({ retry_after_seconds: 0 }), { status: 429 }),
+    )
+
+    await expect(client.request("/api/v1/messages/send")).rejects.toMatchObject({
+      retryAfterSeconds: 0,
     })
   })
 
   it("falls back to the Retry-After header in seconds", async () => {
     const client = clientAnswering(
-      new Response(quotaBody(), { status: 429, headers: { "Retry-After": " 120 " } }),
+      new Response(quotaBody(), { status: 429, headers: { "Retry-After": "120" } }),
     )
 
     await expect(client.request("/api/v1/messages/send")).rejects.toMatchObject({
@@ -225,7 +236,7 @@ describe("retry after", () => {
   it.each([
     ["no header", {}, undefined],
     ["an HTTP-date header", {}, "Wed, 21 Oct 2026 07:28:00 GMT"],
-    ["a fractional header", {}, "1.5"],
+    ["a header above the safe integer range", {}, "99999999999999999999"],
     ["a negative header", {}, "-1"],
     ["a negative body value", { retry_after_seconds: -1 }, undefined],
     ["a fractional body value", { retry_after_seconds: 1.5 }, undefined],

@@ -60,8 +60,8 @@ function retryAfterSeconds(errorPayload: ErrorPayload, response: Response): numb
   if (typeof fromBody === "number" && Number.isSafeInteger(fromBody) && fromBody >= 0) {
     return fromBody
   }
-  const fromHeader = response.headers.get("Retry-After")?.trim()
-  if (fromHeader === undefined || !retryAfterHeaderPattern.test(fromHeader)) return undefined
+  const fromHeader = response.headers.get("Retry-After")
+  if (fromHeader === null || !retryAfterHeaderPattern.test(fromHeader)) return undefined
   const seconds = Number(fromHeader)
   return Number.isSafeInteger(seconds) ? seconds : undefined
 }
