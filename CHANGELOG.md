@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## 0.2.10-beta.0
+
+- `MitraApiError` gains `retryAfterSeconds`: how long the server asked to wait, read from
+  `retry_after_seconds` in the error body or, without it, from the `Retry-After` header in
+  seconds. A value that is not a non-negative integer, or a header in HTTP-date form, leaves it
+  unset. Messenger answers the app's daily email quota with a `429` carrying both.
+
 ## 0.2.9
 
 - Depend on `@mitralab.io/sdk-core@0.2.13`: `AgentTurnUsage` gains `contextTokens`, the tokens

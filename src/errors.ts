@@ -10,6 +10,7 @@ export interface MitraApiErrorOptions {
   details?: unknown
   requestId?: string
   retryable?: boolean
+  retryAfterSeconds?: number
 }
 
 export class MitraApiError extends Error {
@@ -18,6 +19,8 @@ export class MitraApiError extends Error {
   readonly details: unknown
   readonly requestId: string | undefined
   readonly retryable: boolean | undefined
+  /** Seconds the server asked to wait before trying again, as on a quota `429`. */
+  readonly retryAfterSeconds: number | undefined
 
   constructor(message: string, status: number, options: MitraApiErrorOptions = {}) {
     super(message)
@@ -27,5 +30,6 @@ export class MitraApiError extends Error {
     this.details = options.details
     this.requestId = options.requestId
     this.retryable = options.retryable
+    this.retryAfterSeconds = options.retryAfterSeconds
   }
 }

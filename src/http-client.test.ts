@@ -164,3 +164,83 @@ describe("token renewal", () => {
     expect(fetch).toHaveBeenCalledTimes(1)
   })
 })
+
+describe("retry after", () => {
+  const quotaBody = (extra: Record<string, unknown> = {}) =>
+    JSON.stringify({
+      error_code: "EMAIL_DAILY_QUOTA_EXCEEDED",
+      message: "Daily email quota exceeded",
+      ...extra,
+    })
+
+  function clientAnswering(response: Response) {
+    return new HttpClient({
+      baseUrl: "https://api.example.com/messenger",
+      authentication: "bearer",
+      accessToken: "runtime-token",
+      appId: "runtime-app",
+      fetch: vi.fn<Fetch>(async () => response),
+    })
+  }
+
+  it("reads the wait from the body of a quota refusal", async () => {
+    const client = clientAnswering(
+      new Response(quotaBody({ retry_after_seconds: 3600 }), {
+        status: 429,
+        headers: { "Retry-After": "60" },
+      }),
+    )
+
+    await expect(client.request("/api/v1/messages/send")).rejects.toMatchObject({
+      name: "MitraApiError",
+      status: 429,
+      code: "EMAIL_DAILY_QUOTA_EXCEEDED",
+      retryAfterSeconds: 3600,
+    })
+  })
+
+  it("falls back to the Retry-After header in seconds", async () => {
+    const client = clientAnswering(
+      new Response(quotaBody(), { status: 429, headers: { "Retry-After": " 120 " } }),
+    )
+
+    await expect(client.request("/api/v1/messages/send")).rejects.toMatchObject({
+      retryAfterSeconds: 120,
+    })
+  })
+
+  it("uses the header when the body value is invalid", async () => {
+    const client = clientAnswering(
+      new Response(quotaBody({ retry_after_seconds: "soon" }), {
+        status: 429,
+        headers: { "Retry-After": "90" },
+      }),
+    )
+
+    await expect(client.request("/api/v1/messages/send")).rejects.toMatchObject({
+      retryAfterSeconds: 90,
+    })
+  })
+
+  it.each([
+    ["no header", {}, undefined],
+    ["an HTTP-date header", {}, "Wed, 21 Oct 2026 07:28:00 GMT"],
+    ["a fractional header", {}, "1.5"],
+    ["a negative header", {}, "-1"],
+    ["a negative body value", { retry_after_seconds: -1 }, undefined],
+    ["a fractional body value", { retry_after_seconds: 1.5 }, undefined],
+    ["a string body value", { retry_after_seconds: "60" }, undefined],
+  ])("leaves the wait unset with %s", async (_case, extra, header) => {
+    const client = clientAnswering(
+      new Response(quotaBody(extra), {
+        status: 429,
+        headers: header === undefined ? {} : { "Retry-After": header },
+      }),
+    )
+
+    const error = await client.request("/api/v1/messages/send").catch((reason: unknown) => reason)
+
+    expect(error).toMatchObject({ status: 429 })
+    expect(error).toHaveProperty("retryAfterSeconds", undefined)
+  })
+})
