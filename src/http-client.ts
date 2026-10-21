@@ -51,6 +51,21 @@ function optionalString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined
 }
 
+// Only delta-seconds: the Mitra services send Retry-After that way, and an HTTP-date would make
+// the wait depend on the clock skew between the Function and the server.
+const retryAfterHeaderPattern = /^\d+$/
+
+function retryAfterSeconds(errorPayload: ErrorPayload, response: Response): number | undefined {
+  const fromBody = errorPayload.retry_after_seconds
+  if (typeof fromBody === "number" && Number.isSafeInteger(fromBody) && fromBody >= 0) {
+    return fromBody
+  }
+  const fromHeader = response.headers.get("Retry-After")
+  if (fromHeader === null || !retryAfterHeaderPattern.test(fromHeader)) return undefined
+  const seconds = Number(fromHeader)
+  return Number.isSafeInteger(seconds) ? seconds : undefined
+}
+
 function appendQueryParameters(url: URL, params: Record<string, QueryParamValue>): void {
   for (const [key, value] of Object.entries(params)) {
     if (value === undefined) continue
@@ -122,6 +137,7 @@ export function createApiError(
   const code = rawCode === undefined ? undefined : redactText(rawCode, accessToken)
   const retryable =
     typeof errorPayload.retryable === "boolean" ? errorPayload.retryable : response.status >= 500
+  const retryAfter = retryAfterSeconds(errorPayload, response)
 
   return new MitraApiError(message, response.status, {
     ...(code === undefined ? {} : { code }),
@@ -130,6 +146,7 @@ export function createApiError(
       : { details: redactDetails(errorPayload.details, accessToken) }),
     ...(requestId === undefined ? {} : { requestId }),
     ...(retryable === undefined ? {} : { retryable }),
+    ...(retryAfter === undefined ? {} : { retryAfterSeconds: retryAfter }),
   })
 }
 

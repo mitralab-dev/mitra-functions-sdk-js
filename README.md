@@ -65,13 +65,13 @@ async function loadOrder(orderId) {
 
 ## Erros
 
-`MitraApiError` traz `status`, `code`, `details`, `requestId` e `retryable`. O token não aparece na mensagem nem nos detalhes.
+`MitraApiError` traz `status`, `code`, `details`, `requestId`, `retryable` e `retryAfterSeconds`. O token não aparece na mensagem nem nos detalhes. `retryAfterSeconds` é quanto o servidor pediu para esperar, lido de `retry_after_seconds` no corpo ou do header `Retry-After` em segundos; sem valor inteiro válido, fica vazio.
 
 | Erro                                           | Quando                                                          | O que fazer                                                                         |
 | ---------------------------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | `MitraConfigurationError`                      | configuração ausente ou inválida, ou `apps` usado com outro app | confira variáveis e argumentos; para o próprio app, use `currentApp`                |
 | `MitraApiError` `401` ou `403`                 | o token não dá acesso ao recurso                                | confira as permissões do app; nem todo módulo está liberado para o token do runtime |
-| `MitraApiError` `429` ou `5xx`                 | limite de requisições ou falha no servidor                      | repita só se a operação puder ser repetida                                          |
+| `MitraApiError` `429` ou `5xx`                 | limite de requisições ou falha no servidor                      | repita só se a operação puder ser repetida; espere `retryAfterSeconds`, se vier     |
 | `REQUEST_TIMEOUT`, `NETWORK_ERROR`             | prazo estourado ou falha de rede, com `status` `0`              | aumente `timeoutMs` ou repita, se a operação permitir                               |
 | `INVALID_CREDENTIALS`, `AUTHENTICATION_FAILED` | a troca da API key falhou                                       | confira a chave e o `appId`                                                         |
 | `INVALID_RESPONSE`                             | resposta fora do formato esperado                               | atualize o SDK; se continuar, abra uma issue                                        |
