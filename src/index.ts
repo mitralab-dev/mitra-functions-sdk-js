@@ -36,6 +36,7 @@ export type {
   AgentSendOptions,
   AgentSessionTransport,
   AgentSubagent,
+  AgentSubagentFrame,
   AgentSubagentStatus,
   AgentWebSocket,
   AgentWebSocketConstructor,
