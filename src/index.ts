@@ -5,6 +5,7 @@ export type { AppScopedAppsModule, CurrentAppModule } from "./app-scoped-apps"
 export { MitraApiError, MitraConfigurationError } from "./errors"
 export { AgentTaskTurnError } from "@mitralab.io/sdk-core"
 export type {
+  AgentBackgroundTask,
   AgentBulkDeleteResult,
   AgentConnection as CoreAgentConnection,
   AgentConnectionCreateInput,
@@ -13,6 +14,7 @@ export type {
   AgentDefinition,
   AgentInput,
   AgentMessage as CoreAgentMessage,
+  AgentMessageListOptions,
   AgentModel as CoreAgentModel,
   AgentProviderUsage,
   AgentsModule,
@@ -33,6 +35,8 @@ export type {
   AgentSendAndWaitOptions,
   AgentSendOptions,
   AgentSessionTransport,
+  AgentSubagent,
+  AgentSubagentStatus,
   AgentWebSocket,
   AgentWebSocketConstructor,
   AgentTimelineItem as CoreAgentTimelineItem,
