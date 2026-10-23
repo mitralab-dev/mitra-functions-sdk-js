@@ -5,7 +5,14 @@ import ts from "typescript"
 
 const require = createRequire(import.meta.url)
 const expectedLegacySymbolCount = 204
-const requiredNativeDeclarations = ["FunctionBulkCreateInput", "FunctionBulkPatchInput"]
+const requiredNativeDeclarations = [
+  "AgentBackgroundTask",
+  "AgentMessageListOptions",
+  "AgentSubagent",
+  "AgentSubagentStatus",
+  "FunctionBulkCreateInput",
+  "FunctionBulkPatchInput",
+]
 const forbiddenBrowserDeclarations = [
   "ExecutePublicServerFunctionResponse",
   "GetPublicServerFunctionExecutionOptions",
