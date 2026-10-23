@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## 0.3.1-beta.0
+
+- Export `AgentBackgroundTask`, `AgentSubagent`, `AgentSubagentStatus`, `AgentSubagentFrame` and
+  `AgentMessageListOptions`, the Core `0.3.0` types behind `session.backgroundTasks`,
+  `session.subagents`, the `subagent` of a history `tool` item and `agentTasks.listMessages`.
+- README: an Agent session section with sending while a reply runs (`mode`), T3's queue,
+  `backgroundTasks`, subagents and the live `history`, with the kinds 0.3.0 adds to it.
+
 ## 0.3.0
 
 - Depend on `@mitralab.io/sdk-core@0.3.0`, the agent session that follows T3. A message sent while
