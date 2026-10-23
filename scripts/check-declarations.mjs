@@ -9,6 +9,7 @@ const requiredNativeDeclarations = [
   "AgentBackgroundTask",
   "AgentMessageListOptions",
   "AgentSubagent",
+  "AgentSubagentFrame",
   "AgentSubagentStatus",
   "FunctionBulkCreateInput",
   "FunctionBulkPatchInput",
