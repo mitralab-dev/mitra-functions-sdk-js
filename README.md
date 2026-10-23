@@ -51,25 +51,35 @@ async function loadOrder(orderId) {
 
 ## Sessão de agente
 
-A sessão vem do `@mitralab.io/sdk-core` e segue o T3, o harness que roda o agente na box. A box é a fonte da verdade: a sessão mostra o que ela informa e não guarda fila nem estado próprio.
+A sessão vem do `@mitralab.io/sdk-core` e segue o T3, o harness que roda o agente. A box é o ambiente isolado onde o agente e o T3 rodam, um por chat, e é a fonte da verdade da conversa. A sessão não guarda fila própria: `queue`, `subagents` e `backgroundTasks` são o que a box informou por último.
 
 ```javascript
-const session = mitra.agentTasks.session({ taskId: event.taskId })
+const { createClient } = require("@mitralab.io/functions-sdk")
 
-session.on("turnEnd", (result) => console.log(result.content))
+exports.handler = async (event, context) => {
+  const mitra = createClient()
+  const session = mitra.agentTasks.session({ taskId: event.taskId })
 
-session.send("Resuma os pedidos de hoje")
-session.send("Inclua os cancelados", { mode: "queue" })
+  try {
+    const result = await session.sendAndWait(event.prompt, { timeoutMs: 120000 })
+    return { answer: result.content }
+  } finally {
+    session.close()
+  }
+}
 ```
 
-- `send(prompt, options?)` manda na hora e devolve o `clientMessageId` da mensagem, ou `undefined` para texto em branco, que não sai. Sem turno rodando, a mensagem abre um turno. Com turno rodando e sem `mode`, o T3 decide como no composer dele: entra no turno em andamento quando o provedor aceita steer, ou espera na fila do T3. `mode: "steer"` pede o turno em andamento (o T3 recusa enquanto ele ainda não está rodando) e `mode: "queue"` pede a fila. `sendAndWait` aceita as mesmas opções e resolve com o turno que respondeu a mensagem.
-- `queue` é a fila do T3 como a box informa, de qualquer cliente do chat, com `id` (o `clientMessageId`), `text`, `position` e `queueHeld`; o evento `queueChange` avisa quando ela muda. `steerQueueItem(id)` leva um item para o turno em andamento, `editQueueItem(id, text)`, `removeQueueItem(id)` e `clearQueue()` mexem na fila, e `resumeQueue()` retoma a fila que o Stop segurou. Esses comandos vão direto para a box; com o canal da box fora, sai um evento `error` e nada é enviado. A fila muda quando a box responde, não antes.
+Function que só dispara o prompt usa `send` e espera o evento `accepted` antes de chamar `session.close()` e retornar; antes dele, o prompt pode se perder.
+
+- `send(prompt, options?)` manda na hora e devolve o `clientMessageId` da mensagem, ou `undefined` para texto em branco, que não sai. Sem turno rodando, a mensagem abre um turno. Com turno rodando e sem `mode`, o T3 decide como no composer dele: entra no turno em andamento quando o provedor aceita steer, ou espera na fila do T3. `mode: "steer"` pede o turno em andamento (o T3 recusa enquanto ele ainda não está rodando) e `mode: "queue"` pede a fila. O `mode` só vale no canal da box: quando a mensagem vai pelo Copilot (socket reconectando ou chat sem canal direto), ela sai sem `mode` e o T3 decide. `sendAndWait` aceita as mesmas opções e resolve com o turno que respondeu a mensagem.
+- `queue` é a fila do T3 como a box informa, de qualquer cliente do chat, com `id` (o `clientMessageId`), `text`, `position` e `queueHeld`; o evento `queueChange` avisa quando ela muda. `steerQueueItem(id)` leva um item para o turno em andamento, `editQueueItem(id, text)`, `removeQueueItem(id)` e `clearQueue()` mexem na fila, e `resumeQueue()` retoma a fila que o Stop segurou. A fila muda quando a box responde, não antes.
 - Quando o T3 coloca a mensagem no turno em andamento, sai o evento `steered`, com `text` e `messageId`, sem turno novo; o `turnEnd` daquele turno responde a ela.
 - `backgroundTasks` é o trabalho que o provedor mantém em segundo plano (comando, Monitor ou subagente), como a box informou por último, com o evento `backgroundTasks`. É estado, não histórico.
 - `subagents` guarda o último estado de cada subagente, com os eventos `subagent`, `subagentDelta` e `subagentTool`. `stopSubagent(subagentId)` para só ele e deixa o turno seguir.
-- `history` cresce ao vivo enquanto o turno roda, uma peça por item na ordem da box, e é o mesmo que volta ao recarregar o chat. A pergunta entra no ponto em que a box a pegou; até lá ela está em `queue`. O formato dos itens é o da 0.2.13: a chamada e o resultado de uma ferramenta continuam como dois itens.
+- Os comandos da fila e o `stopSubagent` vão só pelo canal da box: com ele fora, sai um evento `error` e nada é enviado.
+- `history` cresce ao vivo enquanto o turno roda, uma peça por item na ordem da box, e é o mesmo que volta ao recarregar o chat. A pergunta entra no ponto em que a box a pegou; até lá ela está em `queue`. Os kinds que já existiam mantêm o formato da 0.2.13, com a chamada e o resultado de uma ferramenta em dois itens `tool`. A 0.3.0 soma os kinds `reasoning`, `approval` e `userInputRequest`, e o texto de subagente como item `agent` com `parentToolId`: quem filtra o histórico por kind precisa tratar os novos.
 
-Os tipos `AgentQueueItem`, `AgentBackgroundTask`, `AgentSubagent` e `AgentSendOptions` saem deste pacote. O comportamento completo, com reconexão e replay, está no [README do Core](https://www.npmjs.com/package/@mitralab.io/sdk-core).
+Os tipos `AgentQueueItem`, `AgentBackgroundTask`, `AgentSubagent`, `AgentSubagentFrame` e `AgentSendOptions` saem deste pacote. O comportamento completo, com reconexão e replay, está no [README do Core](https://www.npmjs.com/package/@mitralab.io/sdk-core).
 
 ## Configuração
 
