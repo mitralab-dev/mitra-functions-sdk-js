@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## 0.2.10
+
+- Depend on `@mitralab.io/sdk-core@0.2.14`: `apps.update()` (and `currentApp.update()`) takes
+  `emailLoginEnabled` and `passwordLoginEnabled`, sent to Code Studio only when supplied, so omission
+  keeps the current value; `AppDefinition` and `AppSummary` carry both fields when Code Studio returns
+  them. `messenger.sendEmail({ to, subject, html, text?, cc?, bcc?, replyTo? })` sends an email as
+  the app's backend through Messenger, with no `from`.
+- Pin the SDK-PARITY-001 corpus to Core `0.2.14` with its digest and immutable source commit.
+
 ## 0.2.10-beta.0
 
 - `MitraApiError` gains `retryAfterSeconds`: how long the server asked to wait, read from
