@@ -904,8 +904,9 @@ describe("Agent sessions", () => {
     expect(JSON.parse(String(message.body))).toEqual({
       type: "message",
       content: "Build the report",
+      // A random UUID, or the core's own id where the runtime has no global crypto (Node 18).
       clientMessageId: expect.stringMatching(
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+        /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|m-\d+-\d+)$/,
       ),
     })
 
