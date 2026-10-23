@@ -891,7 +891,7 @@ describe("Agent sessions", () => {
       "https://api.example.com/copilot/api/v1/tasks",
       "https://api.example.com/copilot/api/v1/tasks/task-1/channel",
       `${BOX_ROUTES}/events?grant=box-grant&ticket=box-ticket&fromSequence=0`,
-      "https://api.example.com/copilot/api/v1/tasks/task-1/messages?size=100&sort=createdAt%2Cdesc",
+      "https://api.example.com/copilot/api/v1/tasks/task-1/messages?size=100&sort=createdAt%2Cdesc&kinds=all",
       `${BOX_ROUTES}/messages?grant=box-grant&ticket=box-ticket`,
     ])
     expect(JSON.parse(String(box.calls[0]?.init.body))).toEqual({
@@ -899,12 +899,15 @@ describe("Agent sessions", () => {
       agentId: AGENT_ID,
       runtime: "T3",
     })
-    expect(box.call(`${BOX_ROUTES}/messages?grant=box-grant&ticket=box-ticket`).init).toMatchObject(
-      {
-        method: "POST",
-        body: JSON.stringify({ type: "message", content: "Build the report" }),
-      },
-    )
+    const message = box.call(`${BOX_ROUTES}/messages?grant=box-grant&ticket=box-ticket`).init
+    expect(message).toMatchObject({ method: "POST" })
+    expect(JSON.parse(String(message.body))).toEqual({
+      type: "message",
+      content: "Build the report",
+      clientMessageId: expect.stringMatching(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+      ),
+    })
 
     box.push("stepStart", { lifecycle: { turnId: "turn-1" } }, 1)
     box.push("textChunk", { text: "Done", kind: "text", lifecycle: { turnId: "turn-1" } }, 2)
@@ -1031,14 +1034,14 @@ describe("Agent sessions", () => {
     const accepted = vi.fn()
     session.on("accepted", accepted)
 
-    session.send("Build the report")
+    const clientMessageId = session.send("Build the report")
     await vi.waitFor(() => expect(accepted).toHaveBeenCalledOnce())
 
     expect(box.urls()).toEqual([
       "https://api.example.com/copilot/api/v1/tasks",
       "https://api.example.com/copilot/api/v1/tasks/task-1/channel",
       "https://api.example.com/copilot/api/v1/tasks/task-1/events",
-      "https://api.example.com/copilot/api/v1/tasks/task-1/messages?size=100&sort=createdAt%2Cdesc",
+      "https://api.example.com/copilot/api/v1/tasks/task-1/messages?size=100&sort=createdAt%2Cdesc&kinds=all",
       "https://api.example.com/copilot/api/v1/tasks/task-1/inputs",
     ])
     expect(raw[0]).toMatchObject({ type: "channelDeclined", payload: { reason: "unavailable" } })
@@ -1054,7 +1057,7 @@ describe("Agent sessions", () => {
       },
     })
     expect(box.call("https://api.example.com/copilot/api/v1/tasks/task-1/inputs").init.body).toBe(
-      JSON.stringify({ type: "message", content: "Build the report" }),
+      JSON.stringify({ type: "message", content: "Build the report", clientMessageId }),
     )
     session.close()
   })
