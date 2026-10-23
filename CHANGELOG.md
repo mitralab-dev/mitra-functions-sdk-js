@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## 0.3.0
+
+- Depend on `@mitralab.io/sdk-core@0.3.0`, the agent session that follows T3. A message sent while
+  a reply runs no longer waits in a local queue of the SDK: it goes to the box at once with its
+  `clientMessageId` and no mode by default, and T3 decides, steering it into the running turn or
+  queueing it. `send(prompt, { mode: "queue" | "steer" })` asks on purpose, and `send` returns the
+  message's `clientMessageId`. `session.history` is the live conversation in the box's order, asked
+  with `kinds=all`, with a tool's call and result as two items, as in 0.2.13, the question as the
+  person wrote it, and T3's approvals and mid-turn questions where they came. `queue` mirrors T3's
+  queue, with `steerQueueItem`, `resumeQueue` and `backgroundTasks`. The history keeps the 0.2.13
+  format; against an old box the new functions show nothing.
+- Pin the SDK-PARITY-001 corpus to Core `0.3.0` with its digest and immutable source commit.
+
 ## 0.2.10
 
 - Depend on `@mitralab.io/sdk-core@0.2.14`: `apps.update()` (and `currentApp.update()`) takes
