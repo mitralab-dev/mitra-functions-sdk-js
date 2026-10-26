@@ -6,7 +6,8 @@ All notable changes to this project are documented in this file.
 
 - Depend on `@mitralab.io/sdk-core@0.2.15`: `messenger` manages the current app's account email
   templates with `listEmailTemplates()`, `getEmailTemplate(type)`, `getEmailTemplateType(type)`,
-  `upsertEmailTemplate(type, input)`, `previewEmailTemplate(type)` and `deleteEmailTemplate(type)`.
+  `upsertEmailTemplate(type, input)`, `previewEmailTemplate(type)` and `deleteEmailTemplate(type)`, with
+  the `EmailTemplate*` types re-exported.
 - Pin the SDK-PARITY-001 corpus to Core `0.2.15` with its digest and immutable source commit.
 - Releases also run from a `release/*` branch, published under the branch's tag (`release-0.2.x`) so
   `latest` stays on the newer minor.

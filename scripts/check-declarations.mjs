@@ -5,7 +5,17 @@ import ts from "typescript"
 
 const require = createRequire(import.meta.url)
 const expectedLegacySymbolCount = 204
-const requiredNativeDeclarations = ["FunctionBulkCreateInput", "FunctionBulkPatchInput"]
+const requiredNativeDeclarations = [
+  "EmailTemplate",
+  "EmailTemplateInput",
+  "EmailTemplatePreview",
+  "EmailTemplateType",
+  "EmailTemplateTypeCatalog",
+  "EmailTemplateUpsertResult",
+  "EmailTemplateVariable",
+  "FunctionBulkCreateInput",
+  "FunctionBulkPatchInput",
+]
 const forbiddenBrowserDeclarations = [
   "ExecutePublicServerFunctionResponse",
   "GetPublicServerFunctionExecutionOptions",
