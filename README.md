@@ -44,7 +44,7 @@ async function loadOrder(orderId) {
 - `queries`, `customQueries`, `sql` e `schema`: queries salvas, SQL parametrizado e estrutura das tabelas.
 - `functions`, `publicFunctions` e `workflows`: chamar outras Server Functions e workflows do app.
 - `integration.executeByAlias(alias, request)`: chama uma API externa configurada no app, com a credencial guardada na Mitra.
-- `messenger.notify(texto)`: manda uma notificação ao usuário autenticado. `listEmailTemplates`, `getEmailTemplate`, `upsertEmailTemplate`, `previewEmailTemplate` e `deleteEmailTemplate` cuidam dos e-mails de conta do app (`SIGN_IN`, `SSO_GUIDANCE`, `APP_USER_INVITED` e `APP_ACCESS_REQUIRED`).
+- `messenger.notify(texto)`: manda uma notificação ao usuário autenticado. `listEmailTemplates`, `getEmailTemplate`, `upsertEmailTemplate`, `previewEmailTemplate` e `deleteEmailTemplate` cuidam dos e-mails de conta do app (`SIGN_IN`, `SSO_GUIDANCE`, `APP_USER_INVITED` e `APP_ACCESS_REQUIRED`). `listEmailSenders`, `registerEmailSender`, `resendEmailSenderVerification`, `confirmEmailSender`, `getEmailSettings` e `updateEmailSettings` cuidam do remetente do app, para quem é OWNER ou ADMIN do workspace.
 - `agentTasks.session(...)`: chat com agente, com envio durante a resposta, a fila do T3, subagentes e o histórico ao vivo. Veja [Sessão de agente](#sessão-de-agente).
 - `currentApp`: definição, arquivos, build e publicação do app da Function.
 - `functionsAdmin`, `integrationAdmin`, `agents`, `agentConnections`, `agentCredentials`, `imports` e `dataSources`: administração dos recursos do app. `agentCredentials.providers(agentId?)` devolve numa chamada só os provedores em que o próximo turno pode rodar, com modelos e a última leitura da assinatura.

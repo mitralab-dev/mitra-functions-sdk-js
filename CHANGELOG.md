@@ -19,6 +19,11 @@ All notable changes to this project are documented in this file.
   `APP_USER_INVITED` and `APP_ACCESS_REQUIRED`. The `appId` is the client's own. Export
   `EmailTemplate`, `EmailTemplateInput`, `EmailTemplatePreview`, `EmailTemplateType`,
   `EmailTemplateTypeCatalog`, `EmailTemplateUpsertResult` and `EmailTemplateVariable`.
+- `messenger` manages the app's sender, for a person who is OWNER or ADMIN of the app's
+  workspace: `listEmailSenders()`, `registerEmailSender({ email, displayName })`,
+  `resendEmailSenderVerification(id)`, `confirmEmailSender(id, code)`, `getEmailSettings()` and
+  `updateEmailSettings(input)`, with the client's own `appId`. Export `EffectiveEmailSender`,
+  `EmailSender`, `EmailSenderInput`, `EmailSettings` and `EmailSettingsInput`.
 - Export `AgentBackgroundTask`, `AgentSubagent`, `AgentSubagentStatus`, `AgentSubagentFrame` and
   `AgentMessageListOptions`, the Core `0.3.0` types behind `session.backgroundTasks`,
   `session.subagents`, the `subagent` of a history `tool` item and `agentTasks.listMessages`.

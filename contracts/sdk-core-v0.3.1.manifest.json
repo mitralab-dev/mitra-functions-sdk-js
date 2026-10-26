@@ -9,7 +9,7 @@
   "sha256": "c5ca69f7aeba83bad0dbc3828e859a114053037c489fed4d4412317dd1515ada",
   "source": {
     "repository": "https://github.com/mitralab-dev/mitra-core-sdk",
-    "commit": "22a9cebc04cc6c2c0be225de3bb86671b4d71b7b",
+    "commit": "49a778fd35f9949dd0d503611ad020669f3cb0fe",
     "path": "contracts/v0.3.1/sdk-parity.json"
   }
 }
