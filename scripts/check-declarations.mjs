@@ -5,7 +5,28 @@ import ts from "typescript"
 
 const require = createRequire(import.meta.url)
 const expectedLegacySymbolCount = 204
-const requiredNativeDeclarations = ["FunctionBulkCreateInput", "FunctionBulkPatchInput"]
+const requiredNativeDeclarations = [
+  "AgentBackgroundTask",
+  "AgentMessageListOptions",
+  "AgentReadyProvider",
+  "AgentSubagent",
+  "AgentSubagentFrame",
+  "AgentSubagentStatus",
+  "EffectiveEmailSender",
+  "EmailSender",
+  "EmailSenderInput",
+  "EmailSettings",
+  "EmailSettingsInput",
+  "EmailTemplate",
+  "EmailTemplateInput",
+  "EmailTemplatePreview",
+  "EmailTemplateType",
+  "EmailTemplateTypeCatalog",
+  "EmailTemplateUpsertResult",
+  "EmailTemplateVariable",
+  "FunctionBulkCreateInput",
+  "FunctionBulkPatchInput",
+]
 const forbiddenBrowserDeclarations = [
   "ExecutePublicServerFunctionResponse",
   "GetPublicServerFunctionExecutionOptions",
