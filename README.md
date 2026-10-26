@@ -44,10 +44,10 @@ async function loadOrder(orderId) {
 - `queries`, `customQueries`, `sql` e `schema`: queries salvas, SQL parametrizado e estrutura das tabelas.
 - `functions`, `publicFunctions` e `workflows`: chamar outras Server Functions e workflows do app.
 - `integration.executeByAlias(alias, request)`: chama uma API externa configurada no app, com a credencial guardada na Mitra.
-- `messenger.notify(texto)`: manda uma notificação ao usuário autenticado.
+- `messenger.notify(texto)`: manda uma notificação ao usuário autenticado. `listEmailTemplates`, `getEmailTemplate`, `upsertEmailTemplate`, `previewEmailTemplate` e `deleteEmailTemplate` cuidam dos e-mails de conta do app (`SIGN_IN`, `SSO_GUIDANCE`, `APP_USER_INVITED` e `APP_ACCESS_REQUIRED`).
 - `agentTasks.session(...)`: chat com agente, com envio durante a resposta, a fila do T3, subagentes e o histórico ao vivo. Veja [Sessão de agente](#sessão-de-agente).
 - `currentApp`: definição, arquivos, build e publicação do app da Function.
-- `functionsAdmin`, `integrationAdmin`, `agents`, `agentConnections`, `agentCredentials`, `imports` e `dataSources`: administração dos recursos do app.
+- `functionsAdmin`, `integrationAdmin`, `agents`, `agentConnections`, `agentCredentials`, `imports` e `dataSources`: administração dos recursos do app. `agentCredentials.providers(agentId?)` devolve numa chamada só os provedores em que o próximo turno pode rodar, com modelos e a última leitura da assinatura.
 
 ## Sessão de agente
 
@@ -78,6 +78,7 @@ Function que só dispara o prompt usa `send` e espera o evento `accepted` antes 
 - `subagents` guarda o último estado de cada subagente, com os eventos `subagent`, `subagentDelta` e `subagentTool`. `stopSubagent(subagentId)` para só ele e deixa o turno seguir.
 - Os comandos da fila e o `stopSubagent` vão só pelo canal da box: com ele fora, sai um evento `error` e nada é enviado.
 - `history` cresce ao vivo enquanto o turno roda, uma peça por item na ordem da box, e é o mesmo que volta ao recarregar o chat. A pergunta entra no ponto em que a box a pegou; até lá ela está em `queue`. Os kinds que já existiam mantêm o formato da 0.2.13, com a chamada e o resultado de uma ferramenta em dois itens `tool`. A 0.3.0 soma os kinds `reasoning`, `approval` e `userInputRequest`, e o texto de subagente como item `agent` com `parentToolId`: quem filtra o histórico por kind precisa tratar os novos.
+- `loadOlder()` lê a página anterior à linha mais antiga de `history`, com o tamanho que `loadHistory` usou, e põe antes dela, emitindo `historyLoaded`. `hasOlder` diz se a última página lida tinha mais. Precisa do Copilot com mitra-copilot#549.
 
 Os tipos `AgentQueueItem`, `AgentBackgroundTask`, `AgentSubagent`, `AgentSubagentFrame` e `AgentSendOptions` saem deste pacote. O comportamento completo, com reconexão e replay, está no [README do Core](https://www.npmjs.com/package/@mitralab.io/sdk-core).
 

@@ -8,9 +8,12 @@ const expectedLegacySymbolCount = 204
 const requiredNativeDeclarations = [
   "AgentBackgroundTask",
   "AgentMessageListOptions",
+  "AgentReadyProvider",
   "AgentSubagent",
   "AgentSubagentFrame",
   "AgentSubagentStatus",
+  "EmailTemplate",
+  "EmailTemplateType",
   "FunctionBulkCreateInput",
   "FunctionBulkPatchInput",
 ]

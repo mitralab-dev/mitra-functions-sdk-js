@@ -2,6 +2,31 @@
 
 All notable changes to this project are documented in this file.
 
+## 0.3.1
+
+- Depend on `@mitralab.io/sdk-core@0.3.1`. `providers` and `loadOlder` need the Copilot with
+  mitra-copilot#549.
+- `agentCredentials.providers(agentId?, options?)`: the providers the next turn can run on, in one
+  call to the Copilot's `GET /api/v1/models/providers`, each with `provider`, `providerName`,
+  `models` and `usage` (null on an API key, a custom provider, before a turn reported a window and
+  when the Copilot could not read it). Export `AgentReadyProvider`.
+- `agentTasks.listMessages(id, { before })` reads only the rows before that message;
+  `session.loadOlder()` puts the page before the oldest row of `history` in front of it, and
+  `session.hasOlder` says whether the last page read had more.
+- `messenger` manages the app's account email templates: `listEmailTemplates()`,
+  `getEmailTemplateType(type)`, `getEmailTemplate(type)`, `upsertEmailTemplate(type, input)`,
+  `previewEmailTemplate(type)` and `deleteEmailTemplate(type)`, for `SIGN_IN`, `SSO_GUIDANCE`,
+  `APP_USER_INVITED` and `APP_ACCESS_REQUIRED`. The `appId` is the client's own. Export
+  `EmailTemplate`, `EmailTemplateInput`, `EmailTemplatePreview`, `EmailTemplateType`,
+  `EmailTemplateTypeCatalog`, `EmailTemplateUpsertResult` and `EmailTemplateVariable`.
+- Export `AgentBackgroundTask`, `AgentSubagent`, `AgentSubagentStatus`, `AgentSubagentFrame` and
+  `AgentMessageListOptions`, the Core `0.3.0` types behind `session.backgroundTasks`,
+  `session.subagents`, the `subagent` of a history `tool` item and `agentTasks.listMessages`.
+- README: an Agent session section with sending while a reply runs (`mode`), T3's queue,
+  `backgroundTasks`, subagents, the live `history` with the kinds 0.3.0 adds to it, and
+  `loadOlder`.
+- Pin the SDK-PARITY-001 corpus to Core `0.3.1` with its digest and immutable source commit.
+
 ## 0.3.0
 
 - Depend on `@mitralab.io/sdk-core@0.3.0`, the agent session that follows T3. A message sent while
