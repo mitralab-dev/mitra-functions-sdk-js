@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## 0.2.12
+
+- Depend on `@mitralab.io/sdk-core@0.2.16-beta.0`: `messenger` manages the current app's sender with
+  `listEmailSenders()`, `registerEmailSender(input)`, `resendEmailSenderVerification(id)`,
+  `confirmEmailSender(id, code)`, `getEmailSettings()` and `updateEmailSettings(input)`, with the
+  `EmailSender*`, `EmailSettings*` and `EffectiveEmailSender` types re-exported. The Core goes out as a
+  beta so `latest` stays on the newer minor; the code is the 0.2.15 line plus the sender methods.
+- Pin the SDK-PARITY-001 corpus to Core `0.2.16-beta.0` with its digest and immutable source commit.
+
 ## 0.2.11
 
 - Depend on `@mitralab.io/sdk-core@0.2.15`: `messenger` manages the current app's account email

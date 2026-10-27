@@ -45,6 +45,13 @@ async function loadOrder(orderId) {
 - `functions`, `publicFunctions` e `workflows`: chamar outras Server Functions e workflows do app.
 - `integration.executeByAlias(alias, request)`: chama uma API externa configurada no app, com a credencial guardada na Mitra.
 - `messenger.notify(texto)`: manda uma notificação ao usuário autenticado.
+- `messenger` e os e-mails do app:
+  - `sendEmail` manda e-mail com o remetente do app.
+  - `listEmailTemplates`, `upsertEmailTemplate` e os demais métodos de template editam os e-mails de conta do app. Pedem edição no app.
+  - `listEmailSenders`, `registerEmailSender`, `resendEmailSenderVerification`, `confirmEmailSender`, `getEmailSettings` e `updateEmailSettings` configuram o remetente. Pedem edição no app e que a pessoa do token seja OWNER ou ADMIN do workspace.
+  - Fluxo do remetente: cadastrar o endereço; a pessoa recebe no endereço o link da AWS e um código de 6 dígitos, que vale 60 minutos; confirmar com o código; vincular com `updateEmailSettings`.
+  - `updateEmailSettings` substitui a configuração inteira: um campo omitido ou `null` é apagado.
+  - Detalhes e erros no README do [sdk-core](https://github.com/mitralab-dev/mitra-core-sdk#readme).
 - `agentTasks.session(...)`: chat com agente, com `send`, `sendAndWait`, `cancel` e eventos como `accepted` e `turnEnd`.
 - `currentApp`: definição, arquivos, build e publicação do app da Function.
 - `functionsAdmin`, `integrationAdmin`, `agents`, `agentConnections`, `agentCredentials`, `imports` e `dataSources`: administração dos recursos do app.
