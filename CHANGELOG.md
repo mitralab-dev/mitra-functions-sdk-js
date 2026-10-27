@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## 0.2.13
+
+- Depend on `@mitralab.io/sdk-core@0.2.17-beta.0`: `currentApp.update(input)` takes `passwordLoginMode`
+  (`"POPUP"` or `"APP_FORM"`) and `loginTheme`, the app definition reads both back, and
+  `EmailTemplateType` gains `PASSWORD_RESET`, `PASSWORD_CHANGED` and `ACCOUNT_LOCKED`, with the
+  `AppLoginTheme` and `PasswordLoginMode` types re-exported. The Core goes out as a beta so `latest`
+  stays on the newer minor.
+- Pin the SDK-PARITY-001 corpus to Core `0.2.17-beta.0` with its digest and immutable source commit.
+
 ## 0.2.12
 
 - Depend on `@mitralab.io/sdk-core@0.2.16-beta.0`: `messenger` manages the current app's sender with

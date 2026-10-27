@@ -53,7 +53,7 @@ async function loadOrder(orderId) {
   - `updateEmailSettings` substitui a configuração inteira: um campo omitido ou `null` é apagado.
   - Detalhes e erros no README do [sdk-core](https://github.com/mitralab-dev/mitra-core-sdk#readme).
 - `agentTasks.session(...)`: chat com agente, com `send`, `sendAndWait`, `cancel` e eventos como `accepted` e `turnEnd`.
-- `currentApp`: definição, arquivos, build e publicação do app da Function.
+- `currentApp`: definição, arquivos, build e publicação do app da Function. `currentApp.update` também liga o login por senha e escolhe o modo (`passwordLoginMode`) e o tema da tela (`loginTheme`); os e-mails de senha (`PASSWORD_RESET`, `PASSWORD_CHANGED`, `ACCOUNT_LOCKED`) se editam pelos métodos de template.
 - `functionsAdmin`, `integrationAdmin`, `agents`, `agentConnections`, `agentCredentials`, `imports` e `dataSources`: administração dos recursos do app.
 
 ## Configuração
