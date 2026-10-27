@@ -6,6 +6,11 @@ import ts from "typescript"
 const require = createRequire(import.meta.url)
 const expectedLegacySymbolCount = 204
 const requiredNativeDeclarations = [
+  "EffectiveEmailSender",
+  "EmailSender",
+  "EmailSenderInput",
+  "EmailSettings",
+  "EmailSettingsInput",
   "EmailTemplate",
   "EmailTemplateInput",
   "EmailTemplatePreview",
