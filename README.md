@@ -55,6 +55,7 @@ async function loadOrder(orderId) {
 - `agentTasks.session(...)`: chat com agente, com `send`, `sendAndWait`, `cancel` e eventos como `accepted` e `turnEnd`.
 - `currentApp`: definição, arquivos, build e publicação do app da Function. `currentApp.update` também liga o login por senha e escolhe o modo (`passwordLoginMode`) e o tema da tela (`loginTheme`); os e-mails de senha (`PASSWORD_RESET`, `PASSWORD_CHANGED`, `ACCOUNT_LOCKED`) se editam pelos métodos de template.
 - `functionsAdmin`, `integrationAdmin`, `agents`, `agentConnections`, `agentCredentials`, `imports` e `dataSources`: administração dos recursos do app.
+  Nas respostas de `functionsAdmin`, o `code` da versão pode ser `null` quando o token não permite ler o código-fonte.
 
 ## Configuração
 

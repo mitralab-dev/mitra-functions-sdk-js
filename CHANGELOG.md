@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## 0.2.14
+
+- Depend on `@mitralab.io/sdk-core@0.2.17-beta.1`: Function version responses accept `code: null`
+  when the caller cannot read source, while malformed non-string values remain invalid.
+- Pin the SDK-PARITY-001 corpus to Core `0.2.17-beta.1` with its digest and immutable source commit.
+- Run CI on `release/**` branches and pull requests. Publish this maintenance release under
+  `release-0.2.x`, preserving `latest` on the newer minor.
+
 ## 0.2.13
 
 - Depend on `@mitralab.io/sdk-core@0.2.17-beta.0`: `currentApp.update(input)` takes `passwordLoginMode`
