@@ -891,7 +891,7 @@ describe("Agent sessions", () => {
       "https://api.example.com/copilot/api/v1/tasks",
       "https://api.example.com/copilot/api/v1/tasks/task-1/channel",
       `${BOX_ROUTES}/events?grant=box-grant&ticket=box-ticket&fromSequence=0`,
-      "https://api.example.com/copilot/api/v1/tasks/task-1/messages?size=100&sort=createdAt%2Cdesc&kinds=all",
+      "https://api.example.com/copilot/api/v1/tasks/task-1/messages?size=100&sort=createdAt%2Cdesc&kinds=all&include=plan",
       `${BOX_ROUTES}/messages?grant=box-grant&ticket=box-ticket`,
     ])
     expect(JSON.parse(String(box.calls[0]?.init.body))).toEqual({
@@ -1042,7 +1042,7 @@ describe("Agent sessions", () => {
       "https://api.example.com/copilot/api/v1/tasks",
       "https://api.example.com/copilot/api/v1/tasks/task-1/channel",
       "https://api.example.com/copilot/api/v1/tasks/task-1/events",
-      "https://api.example.com/copilot/api/v1/tasks/task-1/messages?size=100&sort=createdAt%2Cdesc&kinds=all",
+      "https://api.example.com/copilot/api/v1/tasks/task-1/messages?size=100&sort=createdAt%2Cdesc&kinds=all&include=plan",
       "https://api.example.com/copilot/api/v1/tasks/task-1/inputs",
     ])
     expect(raw[0]).toMatchObject({ type: "channelDeclined", payload: { reason: "unavailable" } })
