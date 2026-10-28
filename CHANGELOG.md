@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## Unreleased
+
+- Stop re-exporting the app email template and sender types (`EmailTemplate*`, `EmailSender*`,
+  `EmailSettings*` and `EffectiveEmailSender`) and drop the email template and sender methods
+  from the README. Apps of the Infusion editor call the Messenger REST routes directly, and the
+  methods leave `@mitralab.io/sdk-core` in mitralab-dev/mitra-core-sdk#135 (#99).
+  `messenger.notify` and `messenger.sendEmail` stay.
+
 ## 0.3.7
 
 - Depend on `@mitralab.io/sdk-core@0.3.7`: the turn's step list from T3 (Claude tasks and todos,
