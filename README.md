@@ -46,6 +46,7 @@ async function loadOrder(orderId) {
 - `integration.executeByAlias(alias, request)`: chama uma API externa configurada no app, com a credencial guardada na Mitra.
 - `messenger.notify(texto)`: manda uma notificação ao usuário autenticado.
 - `agentTasks.session(...)`: chat com agente, com envio durante a resposta, a fila do T3, subagentes e o histórico ao vivo. Veja [Sessão de agente](#sessão-de-agente).
+- `aiProviders.get()`: consulta os provedores e a quota de Included AI pelo Copilot, com o token e o app da Function. O retorno tipado `AiProviders` inclui `managedAiProfile` quando o servidor oferece `IMMERSION`, `null` quando inelegível e pode omitir o campo em servidores anteriores. A consulta não cria chave, não retorna segredo e não muda preferências; o perfil gerenciado é independente da disponibilidade de Included AI.
 - `currentApp`: definição, arquivos, build e publicação do app da Function.
 - `functionsAdmin`, `integrationAdmin`, `agents`, `agentConnections`, `agentCredentials`, `imports` e `dataSources`: administração dos recursos do app. `agentCredentials.providers(agentId?)` devolve numa chamada só os provedores em que o próximo turno pode rodar, com modelos e a última leitura da assinatura.
 

@@ -12,8 +12,14 @@ const requiredNativeDeclarations = [
   "AgentSubagent",
   "AgentSubagentFrame",
   "AgentSubagentStatus",
+  "AiProviders",
+  "AiProvidersModule",
   "FunctionBulkCreateInput",
   "FunctionBulkPatchInput",
+  "IncludedAiQuota",
+  "IncludedAiQuotaWindow",
+  "ManagedAiProfile",
+  "OpencodeAiProvider",
 ]
 const forbiddenBrowserDeclarations = [
   "ExecutePublicServerFunctionResponse",

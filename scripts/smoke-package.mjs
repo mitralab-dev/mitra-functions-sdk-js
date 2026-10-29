@@ -52,6 +52,25 @@ try {
     join(consumerDirectory, "consumer.cts"),
     'import sdk = require("@mitralab.io/functions-sdk")\nconst input: import("@mitralab.io/functions-sdk").AgentTaskCreateInput = { agentType: "CODEX" }\nconst scheduledFunction: import("@mitralab.io/functions-sdk").FunctionCreateInput = { name: "Run", runtime: "JAVASCRIPT", code: "return {}", cronExpression: "0 0 9 * * *", cronEnabled: true }\nconst bulkCreate: import("@mitralab.io/functions-sdk").FunctionBulkCreateInput = { name: "Run", runtime: "JAVASCRIPT", code: "return {}" }\nconst bulkPatch: import("@mitralab.io/functions-sdk").FunctionBulkPatchInput = { description: "Updated" }\nconst sessionOptions: import("@mitralab.io/functions-sdk").CoreAgentTaskSessionOptions = { taskId: "task-1", transport: "http" }\nconst client: import("@mitralab.io/functions-sdk").MitraClient = sdk.createClient({ apiUrl: "https://api.example.com", accessToken: "token", appId: "app" })\nconst session = client.agentTasks.session(sessionOptions)\nvoid [client.currentApp, client.publicFunctions, client.agentTasks, client.integrationAdmin.list, client.messenger, session, input, scheduledFunction, bulkCreate, bulkPatch]\n',
   )
+  for (const extension of ["mts", "cts"]) {
+    writeFileSync(
+      join(consumerDirectory, `providers.${extension}`),
+      `import { createClient, type AiProviders, type AiProvidersModule, type IncludedAiQuota, type IncludedAiQuotaWindow, type ManagedAiProfile, type OpencodeAiProvider } from "@mitralab.io/functions-sdk"
+const client = createClient({ apiUrl: "https://api.example.com", accessToken: "token", appId: "app" })
+const providers: AiProvidersModule = client.aiProviders
+async function readProviders(): Promise<AiProviders> {
+  const result = await providers.get()
+  const profile: ManagedAiProfile | null | undefined = result.managedAiProfile
+  const quota: IncludedAiQuota | null = result.includedAiQuota
+  const day: IncludedAiQuotaWindow | undefined = quota?.windows.day
+  const opencode: OpencodeAiProvider = result.opencode
+  void [profile, day, opencode]
+  return result
+}
+void readProviders
+`,
+    )
+  }
   execFileSync(
     process.execPath,
     [
@@ -67,6 +86,8 @@ try {
       "NodeNext",
       "consumer.mts",
       "consumer.cts",
+      "providers.mts",
+      "providers.cts",
     ],
     { cwd: consumerDirectory, stdio: "inherit" },
   )
@@ -79,6 +100,20 @@ try {
     ],
     { cwd: consumerDirectory, stdio: "inherit" },
   )
+  for (const moduleType of ["module", "commonjs"]) {
+    execFileSync(
+      process.execPath,
+      [
+        `--input-type=${moduleType}`,
+        "--eval",
+        `${moduleType === "module" ? 'import * as sdk from "@mitralab.io/functions-sdk"' : 'const sdk = require("@mitralab.io/functions-sdk")'}
+const client = sdk.createClient({ apiUrl: "https://api.example.com", accessToken: "token", appId: "app", fetch: () => { throw new Error("Unexpected request") } })
+if (typeof client.aiProviders?.get !== "function") throw new Error("aiProviders.get is missing from the installed package")
+`,
+      ],
+      { cwd: consumerDirectory, stdio: "inherit" },
+    )
+  }
   execFileSync(
     process.execPath,
     [

@@ -26,6 +26,7 @@ export interface MitraClient {
   readonly agentCredentials: SdkCore["agentCredentials"]
   readonly agents: SdkCore["agents"]
   readonly agentTasks: AgentTasksWithSessions
+  readonly aiProviders: SdkCore["aiProviders"]
   readonly apps: AppScopedAppsModule
   readonly auth: AuthModule
   readonly context: SdkCore["context"]
@@ -54,6 +55,7 @@ class DefaultMitraClient implements MitraClient {
   readonly agentCredentials: SdkCore["agentCredentials"]
   readonly agents: SdkCore["agents"]
   readonly agentTasks: AgentTasksWithSessions
+  readonly aiProviders: SdkCore["aiProviders"]
   readonly apps: AppScopedAppsModule
   readonly auth: AuthModule
   readonly context: SdkCore["context"]
@@ -140,6 +142,7 @@ class DefaultMitraClient implements MitraClient {
         },
       }),
     )
+    this.aiProviders = core.aiProviders
     this.apps = appModules.apps
     this.auth = core.auth
     this.context = core.context
