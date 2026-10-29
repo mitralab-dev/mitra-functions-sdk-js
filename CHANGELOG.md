@@ -4,11 +4,33 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
-- Stop re-exporting the app email template and sender types (`EmailTemplate*`, `EmailSender*`,
-  `EmailSettings*` and `EffectiveEmailSender`) and drop the email template and sender methods
-  from the README. Apps of the Infusion editor call the Messenger REST routes directly, and the
-  methods leave `@mitralab.io/sdk-core` in mitralab-dev/mitra-core-sdk#135 (#99).
-  `messenger.notify` and `messenger.sendEmail` stay.
+- Pin `@mitralab.io/sdk-core` to the published `0.3.8` release for typed `aiProviders.get()` and
+  its optional `managedAiProfile`. This Functions SDK update is not released yet.
+- Pin the SDK-PARITY-001 corpus to Core `0.3.8`, SHA-256
+  `c06d6c0619da70af65cca9c25564a51c19965bf73bcac77a68c968629741fed3`, from immutable Core commit
+  `8d278eecd13689484ce09fdeb43db7d7eaf92a87`. Run the HTTP adapter cases against this corpus.
+
+### Breaking changes
+
+The Core update inherits the public API removals already merged in
+mitralab-dev/mitra-core-sdk#135. Migrate administration of app email and login to the Messenger
+and Code Studio REST routes before upgrading; see the README migration section.
+
+- Remove `messenger.listEmailTemplates`, `getEmailTemplateType`, `getEmailTemplate`,
+  `upsertEmailTemplate`, `previewEmailTemplate`, `deleteEmailTemplate`, `listEmailSenders`,
+  `registerEmailSender`, `resendEmailSenderVerification`, `confirmEmailSender`, `getEmailSettings`
+  and `updateEmailSettings`. `messenger.notify` and `messenger.sendEmail` stay.
+- Stop re-exporting `EmailTemplate`, `EmailTemplateInput`, `EmailTemplatePreview`,
+  `EmailTemplateType`, `EmailTemplateTypeCatalog`, `EmailTemplateUpsertResult`,
+  `EmailTemplateVariable`, `EmailSender`, `EmailSenderInput`, `EmailSettings`,
+  `EmailSettingsInput` and `EffectiveEmailSender` (#99).
+- Remove `emailLoginEnabled` and `passwordLoginEnabled` from `AppUpdateInput`, `AppDefinition`
+  and `AppSummary`. This affects `apps.update()` and `currentApp.update()` and app response types.
+  The API may still return the fields, but the SDK no longer types or validates them.
+  `allowSignup` stays.
+- Core's `createMessengerModule(transport, errors?)` no longer accepts a third `getAppId`
+  argument. This factory is not exported by Functions; consumers also using Core directly must
+  remove that argument. Functions continues to compose the modules through `createSdkCore`.
 
 ## 0.3.7
 
