@@ -5,6 +5,18 @@ const require = createRequire(import.meta.url)
 const commonJs = require("../dist/index.cjs")
 const esm = await import("../dist/index.js")
 
+for (const sdk of [commonJs, esm]) {
+  const client = sdk.createClient({
+    apiUrl: "https://api.example.com",
+    accessToken: "runtime-token",
+    appId: "runtime-app",
+    fetch: () => {
+      throw new Error("Creating a client must not make a request")
+    },
+  })
+  assert.equal(typeof client.aiProviders.get, "function", "aiProviders.get is missing")
+}
+
 for (const exported of [
   "createClient",
   "createClientFromEnvironment",
@@ -43,6 +55,7 @@ for (const internal of [
   "AgentCredentialsModule",
   "AgentsModule",
   "AgentTasksModule",
+  "AiProvidersModule",
   "AppsModule",
   "AuthModule",
   "ContextModule",

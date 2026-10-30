@@ -480,6 +480,7 @@ describe("initialization", () => {
       client.agentCredentials,
       client.agents,
       client.agentTasks,
+      client.aiProviders,
       client.apps,
       client.auth,
       client.context,

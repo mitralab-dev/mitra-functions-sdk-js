@@ -46,6 +46,7 @@ async function loadOrder(orderId) {
 - `integration.executeByAlias(alias, request)`: chama uma API externa configurada no app, com a credencial guardada na Mitra.
 - `messenger.notify(texto)`: manda uma notificação ao usuário autenticado.
 - `agentTasks.session(...)`: chat com agente, com envio durante a resposta, a fila do T3, subagentes e o histórico ao vivo. Veja [Sessão de agente](#sessão-de-agente).
+- `aiProviders.get()`: consulta os provedores e a quota de Included AI pelo Copilot, com o token e o app da Function. O retorno tipado `AiProviders` inclui `managedAiProfile` quando o servidor oferece `IMMERSION`, `null` quando inelegível e pode omitir o campo em servidores anteriores. A consulta não cria chave, não retorna segredo e não muda preferências; o perfil gerenciado é independente da disponibilidade de Included AI.
 - `currentApp`: definição, arquivos, build e publicação do app da Function.
 - `functionsAdmin`, `integrationAdmin`, `agents`, `agentConnections`, `agentCredentials`, `imports` e `dataSources`: administração dos recursos do app. `agentCredentials.providers(agentId?)` devolve numa chamada só os provedores em que o próximo turno pode rodar, com modelos e a última leitura da assinatura.
 
@@ -122,6 +123,19 @@ Os tipos `AgentQueueItem`, `AgentBackgroundTask`, `AgentSubagent`, `AgentSubagen
 ## Migração do `mitra-sdk`
 
 Os exports do SDK legado continuam neste pacote, marcados `@deprecated`, para código de Function existente trocar a dependência sem reescrever os imports. `createClient()` configura o legado com o mesmo token e o mesmo app. Os tipos do Core que têm nome igual a um tipo legado saem com prefixo `Core`, como `CoreAgentConnection`.
+
+## Migração para o Core 0.3.8 (Functions ainda não publicado)
+
+Esta atualização fixa `@mitralab.io/sdk-core` em `0.3.8`, já publicado, para oferecer `aiProviders.get()` tipado. A versão própria do Functions não muda neste trabalho. O Core também remove APIs públicas de administração de e-mail e login, conforme [mitra-core-sdk#135](https://github.com/mitralab-dev/mitra-core-sdk/pull/135), e o Functions herda essas quebras:
+
+- **Templates de e-mail:** saem de `messenger` os métodos `listEmailTemplates`, `getEmailTemplateType`, `getEmailTemplate`, `upsertEmailTemplate`, `previewEmailTemplate` e `deleteEmailTemplate`.
+- **Remetentes e configurações:** saem `listEmailSenders`, `registerEmailSender`, `resendEmailSenderVerification`, `confirmEmailSender`, `getEmailSettings` e `updateEmailSettings`.
+- **Tipos de e-mail:** deixam de ser exportados `EmailTemplate`, `EmailTemplateInput`, `EmailTemplatePreview`, `EmailTemplateType`, `EmailTemplateTypeCatalog`, `EmailTemplateUpsertResult`, `EmailTemplateVariable`, `EmailSender`, `EmailSenderInput`, `EmailSettings`, `EmailSettingsInput` e `EffectiveEmailSender`.
+- **Login do app:** `emailLoginEnabled` e `passwordLoginEnabled` saem de `AppUpdateInput`, usado por `apps.update()` e `currentApp.update()`, e de `AppDefinition` e `AppSummary`. O servidor pode continuar retornando esses campos, mas o SDK não os tipa nem valida. `allowSignup` continua disponível.
+
+Antes de atualizar, migre as chamadas administrativas de e-mail para as rotas REST do Messenger e a configuração de login para as do Code Studio. Nos apps do editor Infusion, essas chamadas usam o token de sessão obtido no login (`allTokens`), conforme o PR do Core. Não substitua esse token pelo token da Function: a autorização de cada rota continua sendo a do serviço. Remova os imports dos tipos retirados e use os contratos das rotas REST na integração administrativa. `messenger.notify()` e `messenger.sendEmail()` continuam no SDK para o backend do app.
+
+Se você também usa o Core diretamente, troque `createMessengerModule(transport, errors, getAppId)` por `createMessengerModule(transport, errors)`. Essa factory não é exportada pelo Functions, que usa `createSdkCore`; os argumentos de `createClient`, `createClientFromEnvironment` e `createClientFromApiKey` não mudam.
 
 ## Desenvolvimento
 
