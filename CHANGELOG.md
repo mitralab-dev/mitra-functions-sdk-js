@@ -2,13 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
-## Unreleased
+## 0.3.8
 
-- Pin `@mitralab.io/sdk-core` to the published `0.3.8` release for typed `aiProviders.get()` and
-  its optional `managedAiProfile`. This Functions SDK update is not released yet.
-- Pin the SDK-PARITY-001 corpus to Core `0.3.8`, SHA-256
-  `c06d6c0619da70af65cca9c25564a51c19965bf73bcac77a68c968629741fed3`, from immutable Core commit
-  `8d278eecd13689484ce09fdeb43db7d7eaf92a87`. Run the HTTP adapter cases against this corpus.
+- Depend on `@mitralab.io/sdk-core@0.3.9`: a history reread while a turn runs no longer drops the
+  older pages already read nor brings a live piece back to an older version, and a send the server
+  refuses with its own sentence emits `error` with that sentence alone on both paths
+  (mitra-core-sdk#145). Calling `loadHistory` again now merges into `history` when the new page
+  reaches it, instead of resetting it.
+- Typed `aiProviders.get()` and its optional `managedAiProfile`, from Core `0.3.8`.
+- Pin the SDK-PARITY-001 corpus to Core `0.3.9`, SHA-256
+  `c954e6cba5b7ee9622a1971eedc2001146ad0063b7d170f0913e0f1a234d4ee8`, from immutable Core commit
+  `388c991461bbe227e437148c1c628b81404881c2`. Run the HTTP adapter cases against this corpus.
 
 ### Breaking changes
 

@@ -124,9 +124,9 @@ Os tipos `AgentQueueItem`, `AgentBackgroundTask`, `AgentSubagent`, `AgentSubagen
 
 Os exports do SDK legado continuam neste pacote, marcados `@deprecated`, para código de Function existente trocar a dependência sem reescrever os imports. `createClient()` configura o legado com o mesmo token e o mesmo app. Os tipos do Core que têm nome igual a um tipo legado saem com prefixo `Core`, como `CoreAgentConnection`.
 
-## Migração para o Core 0.3.8 (Functions ainda não publicado)
+## Migração para o Core 0.3.8 (Functions 0.3.8)
 
-Esta atualização fixa `@mitralab.io/sdk-core` em `0.3.8`, já publicado, para oferecer `aiProviders.get()` tipado. A versão própria do Functions não muda neste trabalho. O Core também remove APIs públicas de administração de e-mail e login, conforme [mitra-core-sdk#135](https://github.com/mitralab-dev/mitra-core-sdk/pull/135), e o Functions herda essas quebras:
+O Functions 0.3.8 fixa `@mitralab.io/sdk-core` em `0.3.9`, que traz o `aiProviders.get()` tipado da 0.3.8. O Core 0.3.8 também remove APIs públicas de administração de e-mail e login, conforme [mitra-core-sdk#135](https://github.com/mitralab-dev/mitra-core-sdk/pull/135), e o Functions herda essas quebras:
 
 - **Templates de e-mail:** saem de `messenger` os métodos `listEmailTemplates`, `getEmailTemplateType`, `getEmailTemplate`, `upsertEmailTemplate`, `previewEmailTemplate` e `deleteEmailTemplate`.
 - **Remetentes e configurações:** saem `listEmailSenders`, `registerEmailSender`, `resendEmailSenderVerification`, `confirmEmailSender`, `getEmailSettings` e `updateEmailSettings`.
