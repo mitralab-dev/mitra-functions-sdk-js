@@ -54,6 +54,25 @@ try {
   )
   for (const extension of ["mts", "cts"]) {
     writeFileSync(
+      join(consumerDirectory, `files.${extension}`),
+      `import { createClient, type FileUploadInput, type FileUpload, type FileMetadata, type FileGrant, type FilesModule } from "@mitralab.io/functions-sdk"
+const files: FilesModule = createClient({ apiUrl: "https://api.example.com", appId: "app", accessToken: "ordinary", filesToken: "dedicated" }).files
+async function useFiles(input: FileUploadInput, key: string, id: string) {
+  const upload: FileUpload = await files.createUpload(input, { idempotencyKey: key })
+  const metadata: FileMetadata = await files.commit(id)
+  const grant: FileGrant = await files.createReadGrant(id, { idempotencyKey: key })
+  // @ts-expect-error Grants do not expose signed storage URLs.
+  void grant.url
+  // @ts-expect-error Backend APIs require an explicit idempotency key.
+  await files.createUpload(input)
+  // @ts-expect-error The backend module does not transfer browser files.
+  void files.upload
+  return { upload, metadata, grant }
+}
+void useFiles
+`,
+    )
+    writeFileSync(
       join(consumerDirectory, `providers.${extension}`),
       `import { createClient, type AiProviders, type AiProvidersModule, type IncludedAiQuota, type IncludedAiQuotaWindow, type ManagedAiProfile, type OpencodeAiProvider } from "@mitralab.io/functions-sdk"
 const client = createClient({ apiUrl: "https://api.example.com", accessToken: "token", appId: "app" })
@@ -88,6 +107,8 @@ void readProviders
       "consumer.cts",
       "providers.mts",
       "providers.cts",
+      "files.mts",
+      "files.cts",
     ],
     { cwd: consumerDirectory, stdio: "inherit" },
   )

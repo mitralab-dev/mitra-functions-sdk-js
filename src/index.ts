@@ -1,6 +1,15 @@
 export { createClient, createClientFromApiKey, createClientFromEnvironment } from "./client"
 export type { AccessTokenProvider } from "./api-key"
 export type { MitraClient } from "./client"
+export type {
+  FileChecksum,
+  FileMetadata,
+  FileGrant,
+  FileUploadInput,
+  FileUpload,
+  FileIdempotencyOptions,
+  FilesModule,
+} from "./files.types"
 export type { AppScopedAppsModule, CurrentAppModule } from "./app-scoped-apps"
 export { MitraApiError, MitraConfigurationError } from "./errors"
 export { AgentTaskTurnError } from "@mitralab.io/sdk-core"

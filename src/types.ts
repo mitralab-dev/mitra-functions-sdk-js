@@ -5,6 +5,7 @@ export type Fetch = typeof globalThis.fetch
 export interface MitraEnvironment {
   MITRA_API_URL?: string
   MITRA_PLATFORM_ACCESS_TOKEN?: string
+  MITRA_FILES_TOKEN?: string
   /** Api key created in Settings -> API keys. Traded for a token by the SDK. */
   MITRA_API_KEY?: string
   MITRA_APP_ID?: string
@@ -23,6 +24,7 @@ export interface MitraClientConfig {
   /** Optional BFF base URL used only to configure deprecated reexports. */
   legacyBaseUrl?: string
   accessToken?: string
+  filesToken?: string
   /** Api key created in Settings -> API keys, used by `createClientFromApiKey`. */
   apiKey?: string
   appId?: string

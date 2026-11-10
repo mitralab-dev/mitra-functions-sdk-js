@@ -41,6 +41,7 @@ async function loadOrder(orderId) {
 ## O que dá para fazer
 
 - `entities.<Tabela>`: `list`, `filter`, `get`, `create`, `bulkCreate`, `update`, `delete` e `deleteMany` nas tabelas do app.
+- `files`: autorizar upload e leitura, consultar metadados, confirmar retenção e excluir arquivos privados. Requer a capacidade de arquivos na Function.
 - `queries`, `customQueries`, `sql` e `schema`: queries salvas, SQL parametrizado e estrutura das tabelas.
 - `functions`, `publicFunctions` e `workflows`: chamar outras Server Functions e workflows do app.
 - `integration.executeByAlias(alias, request)`: chama uma API externa configurada no app, com a credencial guardada na Mitra.
@@ -49,6 +50,46 @@ async function loadOrder(orderId) {
 - `aiProviders.get()`: consulta os provedores e a quota de Included AI pelo Copilot, com o token e o app da Function. O retorno tipado `AiProviders` inclui `managedAiProfile` quando o servidor oferece `IMMERSION`, `null` quando inelegível e pode omitir o campo em servidores anteriores. A consulta não cria chave, não retorna segredo e não muda preferências; o perfil gerenciado é independente da disponibilidade de Included AI.
 - `currentApp`: definição, arquivos, build e publicação do app da Function.
 - `functionsAdmin`, `integrationAdmin`, `agents`, `agentConnections`, `agentCredentials`, `imports` e `dataSources`: administração dos recursos do app. `agentCredentials.providers(agentId?)` devolve numa chamada só os provedores em que o próximo turno pode rodar, com modelos e a última leitura da assinatura.
+
+## Arquivos privados
+
+`files` usa somente `filesToken` ou `MITRA_FILES_TOKEN`, a credencial curta que o runtime injeta nas Functions privadas habilitadas. Sem ela, criar o cliente e usar os outros módulos continua funcionando; chamar `files` falha com `MitraConfigurationError`. Token comum, API key e renovação de API key não substituem essa credencial. Nenhum método devolve URL de armazenamento ou token.
+
+```javascript
+const { createClient } = require("@mitralab.io/functions-sdk")
+const { assertCanAttach } = require("./file-policy")
+
+exports.handler = async (event, context) => {
+  await assertCanAttach(context, event.conversationId)
+  const mitra = createClient()
+  return mitra.files.createUpload(event.metadata, {
+    idempotencyKey: event.idempotencyKey,
+  })
+}
+```
+
+`file-policy` é código do seu app: valida o ator do contexto autenticado, conversa, vínculo e papel. Não aceite identidade do payload. O destinatário da concessão é o invocador autenticado, definido pelo servidor. O callback de `platform-sdk.files.upload` fornece `metadata` com `{ name, contentType, size, partChecksums }`; não envie bytes ou base64 para a Function.
+
+| Método                                                | Retorno                                                        |
+| ----------------------------------------------------- | -------------------------------------------------------------- |
+| `files.createUpload(input, { idempotencyKey })`       | `{ file, uploadId, grant }`, arquivo `UPLOADING`               |
+| `files.get(fileId)`                                   | `FileMetadata`                                                 |
+| `files.commit(fileId)`                                | `FileMetadata` em `READY`, após o app aceitar o vínculo        |
+| `files.createReadGrant(fileId, { idempotencyKey })`   | `FileGrant` de leitura                                         |
+| `files.createReadGrants(fileIds, { idempotencyKey })` | uma concessão por ID, na ordem pedida, de 1 a 10 IDs distintos |
+| `files.delete(fileId)`                                | `void`, bloqueia leitura e agenda limpeza                      |
+
+`input` aceita `resourceRef` opcional para correlação, nunca como permissão. Arquivos têm de 1 byte a 25 MiB. O manifesto contém SHA-256 em base64 de cada parte de 5 MiB (última menor); até o arquivo pequeno usa multipart. O checksum final é SHA256 COMPOSITE: base64 do SHA-256 da concatenação dos hashes binários das partes, seguido de `-N`, inclusive `-1`. Datas são strings ISO UTC.
+
+Use um UUID por intenção em `idempotencyKey`, preservado nas tentativas dessa mesma criação. Payload diferente exige outra chave. O SDK não repete operações de controle automaticamente. Uma nova autorização de leitura após expiração usa nova chave e repete a regra de negócio.
+
+Ao salvar uma mensagem, persista o vínculo com `fileId` em estado pendente, confirme com `files.commit(fileId)` e marque o vínculo como pronto. Repetir `commit` é seguro. Se falhar entre as etapas, reconcilie o vínculo pendente com `files.get` e `commit`; não publique leitura antes de `READY`. Um upload `STAGED` não confirmado expira em `pendingExpiresAt`. Ao descartar, autorize a exclusão e chame `delete`.
+
+A Function de leitura confere o vínculo real do arquivo com a conversa e a permissão atual antes de `createReadGrant`. A Function de exclusão também aplica sua própria política. Guarde apenas `fileId` no histórico. Concessão não é token bearer e não pode ser resgatada por outro destinatário. URLs já emitidas têm prazo curto e não podem ser recolhidas depois de usadas.
+
+Habilitar `filesEnabled` é operação administrativa do serviço Functions, com identidade de editor real. Os tipos de `functionsAdmin` vêm do Core e ainda não incluem esse campo nesta versão; use `PATCH /functions/api/v1/functions/{functionId}` com `{ "filesEnabled": true }` na API administrativa, autenticada como editor real, para habilitar a capacidade em Function privada JS/Python. Não use o token da execução para tentar habilitar a própria Function.
+
+Erros de arquivos preservam `status`, `code`, `retryable` e `retryAfterSeconds`, mas descartam mensagem/detalhes upstream para impedir exposição de credenciais, concessões e URLs. Testes locais verificam o contrato; disponibilidade depende da entrega coordenada do backend e da infraestrutura de arquivos.
 
 ## Sessão de agente
 
@@ -91,6 +132,7 @@ Os tipos `AgentQueueItem`, `AgentBackgroundTask`, `AgentSubagent`, `AgentSubagen
 | ------------- | ---------------------------------------------- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | `apiUrl`      | `MITRA_API_URL` ou `MITRA_BASE_URL`            | sim                            | URL HTTP ou HTTPS do API gateway da Mitra, sem credencial, query ou fragmento                                                                |
 | `accessToken` | `MITRA_PLATFORM_ACCESS_TOKEN` ou `MITRA_TOKEN` | sim, exceto com API key        | token do runtime, enviado como `Bearer`                                                                                                      |
+| `filesToken`  | `MITRA_FILES_TOKEN`                            | somente ao usar `files`        | credencial dedicada da execução habilitada, sem fallback para o token comum                                                                  |
 | `appId`       | `MITRA_APP_ID` ou `MITRA_PROJECT_ID`           | sim                            | app em que o cliente atua                                                                                                                    |
 | `apiKey`      | `MITRA_API_KEY`                                | só em `createClientFromApiKey` | chave do app, para processo fora do runtime                                                                                                  |
 | `timeoutMs`   |                                                | não                            | prazo por requisição; sem ele, o SDK não impõe prazo, e dentro de uma Function vale o limite de tempo dela                                   |

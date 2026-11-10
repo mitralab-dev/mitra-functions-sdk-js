@@ -7,6 +7,7 @@ interface BaseHttpClientConfig {
   baseUrl: string
   timeoutMs?: number
   fetch: Fetch
+  redactErrors?: boolean
 }
 
 type HttpClientConfig = BaseHttpClientConfig &
@@ -163,6 +164,7 @@ export class HttpClient implements Transport {
   private readonly appId: string | undefined
   private readonly timeoutMs: number | undefined
   private readonly fetchImplementation: Fetch
+  private readonly redactErrors: boolean
 
   constructor(config: HttpClientConfig) {
     this.baseUrl = config.baseUrl
@@ -172,6 +174,7 @@ export class HttpClient implements Transport {
     this.appId = config.authentication === "bearer" ? config.appId : undefined
     this.timeoutMs = config.timeoutMs
     this.fetchImplementation = config.fetch
+    this.redactErrors = config.redactErrors ?? false
   }
 
   async request<T>(path: string, options: TransportRequestOptions = {}): Promise<T> {
@@ -216,7 +219,18 @@ export class HttpClient implements Transport {
       if (response.status === 204) return undefined as T
 
       const payload = await parsePayload(response)
-      if (!response.ok) throw createApiError(response, payload, accessToken)
+      if (!response.ok) {
+        const error = createApiError(response, payload, accessToken)
+        if (!this.redactErrors) throw error
+        throw new MitraApiError("File API request failed", error.status, {
+          code:
+            error.code && /^[A-Z_]{1,80}$/.test(error.code) ? error.code : "FILE_REQUEST_FAILED",
+          ...(error.retryable === undefined ? {} : { retryable: error.retryable }),
+          ...(error.retryAfterSeconds === undefined
+            ? {}
+            : { retryAfterSeconds: error.retryAfterSeconds }),
+        })
+      }
 
       return payload as T
     } catch (error) {

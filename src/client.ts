@@ -17,10 +17,13 @@ import { coreErrors } from "./core-errors"
 import { resolveApiKeyOptions, resolveConfig } from "./config"
 import type { ResolvedMitraClientConfig } from "./config"
 import { HttpClient } from "./http-client"
+import { createFilesModule } from "./files"
+import type { FilesModule } from "./files.types"
 import { configureLegacySdk } from "./legacy/configure"
 import type { MitraClientConfig, MitraEnvironment } from "./types"
 
 export interface MitraClient {
+  readonly files: FilesModule
   init(): Promise<void>
   readonly agentConnections: SdkCore["agentConnections"]
   readonly agentCredentials: SdkCore["agentCredentials"]
@@ -51,6 +54,7 @@ export interface MitraClient {
 }
 
 class DefaultMitraClient implements MitraClient {
+  readonly files: FilesModule
   readonly agentConnections: SdkCore["agentConnections"]
   readonly agentCredentials: SdkCore["agentCredentials"]
   readonly agents: SdkCore["agents"]
@@ -150,6 +154,7 @@ class DefaultMitraClient implements MitraClient {
     this.customQueries = core.customQueries
     this.dataSources = core.dataSources
     this.entities = core.entities
+    this.files = createFilesModule(config)
     this.functions = core.functions
     this.functionsAdmin = core.functionsAdmin
     this.imports = core.imports
