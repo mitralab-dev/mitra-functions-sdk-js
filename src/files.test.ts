@@ -184,7 +184,7 @@ describe("files contracts", () => {
 
   it.each([
     { size: 0 },
-    { size: 25 * 1024 * 1024 + 1 },
+    { size: 25 * 1024 * 1024 + 1, partChecksums: Array(6).fill(digest) },
     { size: 1.5 },
     { name: "" },
     { contentType: "" },
@@ -203,16 +203,23 @@ describe("files contracts", () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 
-  it.each([[], [fileId, fileId], Array(11).fill(fileId), ["../escape"]].map((ids) => ({ ids })))(
-    "rejects invalid read batch $ids",
-    async ({ ids }) => {
-      const fetch = vi.fn<Fetch>()
-      await expect(
-        createClient({ ...config, fetch }).files.createReadGrants(ids, { idempotencyKey: key }),
-      ).rejects.toBeInstanceOf(MitraConfigurationError)
-      expect(fetch).not.toHaveBeenCalled()
-    },
-  )
+  it.each(
+    [
+      [],
+      [fileId, fileId],
+      Array.from(
+        { length: 11 },
+        (_, index) => `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+      ),
+      ["../escape"],
+    ].map((ids) => ({ ids })),
+  )("rejects invalid read batch $ids", async ({ ids }) => {
+    const fetch = vi.fn<Fetch>()
+    await expect(
+      createClient({ ...config, fetch }).files.createReadGrants(ids, { idempotencyKey: key }),
+    ).rejects.toBeInstanceOf(MitraConfigurationError)
+    expect(fetch).not.toHaveBeenCalled()
+  })
 
   it.each([
     null,
