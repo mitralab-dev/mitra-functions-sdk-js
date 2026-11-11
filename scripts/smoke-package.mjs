@@ -56,7 +56,7 @@ try {
     writeFileSync(
       join(consumerDirectory, `files.${extension}`),
       `import { createClient, type FileUploadInput, type FileUpload, type FileMetadata, type FileGrant, type FilesModule } from "@mitralab.io/functions-sdk"
-const files: FilesModule = createClient({ apiUrl: "https://api.example.com", appId: "app", accessToken: "ordinary", filesToken: "dedicated" }).files
+const files: FilesModule = createClient({ apiUrl: "https://api.example.com", appId: "app", accessToken: "execution-token" }).files
 async function useFiles(input: FileUploadInput, key: string, id: string) {
   const upload: FileUpload = await files.createUpload(input, { idempotencyKey: key })
   const metadata: FileMetadata = await files.commit(id)

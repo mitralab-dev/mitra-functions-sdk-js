@@ -53,7 +53,7 @@ async function loadOrder(orderId) {
 
 ## Arquivos privados
 
-`files` usa somente `filesToken` ou `MITRA_FILES_TOKEN`, a credencial curta que o runtime injeta automaticamente nas execuções elegíveis de Functions privadas. Sem ela, criar o cliente e usar os outros módulos continua funcionando; chamar `files` falha com `MitraConfigurationError`. Token comum, API key e renovação de API key não substituem essa credencial. Nenhum método devolve URL de armazenamento ou token.
+`files` usa o mesmo `accessToken` dos demais módulos, injetado pelo runtime em `MITRA_TOKEN`. O backend exige contexto de execução e autorização de arquivos vigente nesse token; token comum de browser/editor ou obtido por API key não concede esse acesso. O cliente de arquivos não renova tokens por API key, nem após `401`. Nenhum método devolve URL de armazenamento ou token.
 
 ```javascript
 const { createClient } = require("@mitralab.io/functions-sdk")
@@ -87,7 +87,7 @@ Ao salvar uma mensagem, persista o vínculo com `fileId` em estado pendente, con
 
 A Function de leitura confere o vínculo real do arquivo com a conversa e a permissão atual antes de `createReadGrant`. A Function de exclusão também aplica sua própria política. Guarde apenas `fileId` no histórico. Concessão não é token bearer e não pode ser resgatada por outro destinatário. URLs já emitidas têm prazo curto e não podem ser recolhidas depois de usadas.
 
-Não há habilitação individual para arquivos. O Functions prepara a credencial para execuções privadas JavaScript/Python com ator autenticado elegível, fora de chamadas públicas, agendas e workflows. A emissão ocorre na preparação da execução, mesmo se o código não usar `files`. Cada Function continua responsável pela autorização de negócio.
+Não há habilitação individual para arquivos. O Functions acrescenta a autorização curta de arquivos ao token de execuções privadas JavaScript/Python com ator autenticado elegível, fora de chamadas públicas, agendas e workflows. A emissão ocorre na preparação da execução, mesmo se o código não usar `files`. O prazo de arquivos é independente da validade ordinária do token. Cada Function continua responsável pela autorização de negócio.
 
 Erros de arquivos preservam `status`, `code`, `retryable` e `retryAfterSeconds`, mas descartam mensagem/detalhes upstream para impedir exposição de credenciais, concessões e URLs. Testes locais verificam o contrato; disponibilidade depende da entrega coordenada do backend e da infraestrutura de arquivos.
 
@@ -132,7 +132,6 @@ Os tipos `AgentQueueItem`, `AgentBackgroundTask`, `AgentSubagent`, `AgentSubagen
 | ------------- | ---------------------------------------------- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | `apiUrl`      | `MITRA_API_URL` ou `MITRA_BASE_URL`            | sim                            | URL HTTP ou HTTPS do API gateway da Mitra, sem credencial, query ou fragmento                                                                |
 | `accessToken` | `MITRA_PLATFORM_ACCESS_TOKEN` ou `MITRA_TOKEN` | sim, exceto com API key        | token do runtime, enviado como `Bearer`                                                                                                      |
-| `filesToken`  | `MITRA_FILES_TOKEN`                            | somente ao usar `files`        | credencial dedicada da execução habilitada, sem fallback para o token comum                                                                  |
 | `appId`       | `MITRA_APP_ID` ou `MITRA_PROJECT_ID`           | sim                            | app em que o cliente atua                                                                                                                    |
 | `apiKey`      | `MITRA_API_KEY`                                | só em `createClientFromApiKey` | chave do app, para processo fora do runtime                                                                                                  |
 | `timeoutMs`   |                                                | não                            | prazo por requisição; sem ele, o SDK não impõe prazo, e dentro de uma Function vale o limite de tempo dela                                   |
@@ -156,7 +155,7 @@ Os tipos `AgentQueueItem`, `AgentBackgroundTask`, `AgentSubagent`, `AgentSubagen
 ## Boas práticas
 
 - Crie o cliente dentro do handler. O token do runtime vale para aquela execução e dura pouco.
-- O SDK faz uma tentativa por requisição e não repete, para não gravar duas vezes. `retryable` é só uma dica. O cliente por API key é a exceção: num `401`, ele pega um token novo e repete aquela requisição uma vez.
+- O SDK faz uma tentativa por requisição e não repete, para não gravar duas vezes. `retryable` é só uma dica. O cliente por API key é a exceção nos módulos ordinários: num `401`, ele pega um token novo e repete aquela requisição uma vez. `files` não participa dessa renovação.
 - Para o app da Function, use `currentApp`. `apps` só aceita o próprio app, e `apps.list()` e `apps.create()` não existem aqui.
 - Function que só dispara um prompt para um agente pode retornar depois do evento `accepted`. Antes dele, o prompt pode se perder.
 - `cancel()` chamado enquanto o prompt ainda está a caminho espera a box aceitar a mensagem e só então interrompe o turno; aguarde a promessa dele antes de dar o chat por parado. Se a box recusar a mensagem, nenhum stop sai e o evento `cancelled` não é emitido, então o stop não interrompe um turno seguinte.

@@ -7,7 +7,6 @@ export interface ResolvedMitraClientConfig {
   apiUrl: string
   legacyBaseUrl: string
   accessToken: string
-  filesToken?: string
   appId: string
   dataSourceId?: string
   timeoutMs?: number
@@ -143,9 +142,6 @@ export function resolveConfig(
     apiUrl,
     legacyBaseUrl: normalizeApiUrl(config.legacyBaseUrl ?? environment.MITRA_BASE_URL ?? apiUrl),
     accessToken,
-    ...((config.filesToken ?? environment.MITRA_FILES_TOKEN) === undefined
-      ? {}
-      : { filesToken: config.filesToken ?? environment.MITRA_FILES_TOKEN }),
     appId,
     ...(dataSourceId === undefined ? {} : { dataSourceId: dataSourceId.trim() }),
     ...(timeoutMs === undefined ? {} : { timeoutMs }),

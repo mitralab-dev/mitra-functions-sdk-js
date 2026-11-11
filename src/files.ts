@@ -82,13 +82,11 @@ function grant(value: FileGrant, fileId: string, operation: FileGrant["operation
 
 export function createFilesModule(config: ResolvedMitraClientConfig): FilesModule {
   const transport = () => {
-    if (!config.filesToken?.trim()) {
-      throw new MitraConfigurationError("files requires filesToken or MITRA_FILES_TOKEN")
-    }
+    // API key exchange cannot renew the execution's file authorization.
     return new HttpClient({
       baseUrl: `${config.apiUrl}/data-manager`,
       authentication: "bearer",
-      accessToken: config.filesToken.trim(),
+      accessToken: config.accessToken,
       appId: config.appId,
       fetch: config.fetch,
       redactErrors: true,

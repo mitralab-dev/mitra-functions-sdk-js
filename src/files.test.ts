@@ -1,6 +1,11 @@
 import { inspect } from "node:util"
 import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest"
-import { createClient, createClientFromEnvironment, MitraConfigurationError } from "./index"
+import {
+  createClient,
+  createClientFromApiKey,
+  createClientFromEnvironment,
+  MitraConfigurationError,
+} from "./index"
 import type {
   Fetch,
   FileGrant,
@@ -34,8 +39,7 @@ const upload: FileUpload = { file, uploadId: key, grant }
 const config = {
   apiUrl: "https://api.example.com",
   appId: "app",
-  accessToken: "ordinary-token",
-  filesToken: "files-secret",
+  accessToken: "execution-token",
 }
 const ready: FileMetadata = {
   ...file,
@@ -55,7 +59,7 @@ afterEach(() => {
 })
 
 describe("files credentials", () => {
-  it.each(["config", "environment"])("uses only the dedicated %s credential", async (source) => {
+  it.each(["config", "environment"])("uses the execution %s credential", async (source) => {
     const fetch = vi.fn<Fetch>().mockResolvedValue(Response.json(upload))
     vi.stubGlobal("fetch", fetch)
     const client =
@@ -65,10 +69,10 @@ describe("files credentials", () => {
             MITRA_API_URL: config.apiUrl,
             MITRA_APP_ID: config.appId,
             MITRA_TOKEN: config.accessToken,
-            MITRA_FILES_TOKEN: config.filesToken,
+            MITRA_FILES_TOKEN: "retired-token",
           })
-    expect(JSON.stringify(client)).not.toContain(config.filesToken)
-    expect(inspect(client, { showHidden: true, depth: null })).not.toContain(config.filesToken)
+    expect(JSON.stringify(client)).not.toContain(config.accessToken)
+    expect(inspect(client, { showHidden: true, depth: null })).not.toContain(config.accessToken)
     const result = await client.files.createUpload(
       { ...input, resourceRef: "message-1" },
       { idempotencyKey: key },
@@ -77,7 +81,7 @@ describe("files credentials", () => {
     expect(fetch.mock.calls[0]?.[1]).toMatchObject({
       method: "POST",
       headers: {
-        Authorization: `Bearer ${config.filesToken}`,
+        Authorization: `Bearer ${config.accessToken}`,
         "X-App-Id": "app",
         "Idempotency-Key": key,
       },
@@ -90,13 +94,21 @@ describe("files credentials", () => {
     expectTypeOf(result).toEqualTypeOf<FileUpload>()
   })
 
-  it("does not fall back to an ordinary token or API key", async () => {
-    vi.stubEnv("MITRA_FILES_TOKEN", undefined)
-    const fetch = vi.fn<Fetch>()
-    const client = createClient({ ...config, filesToken: "", apiKey: "api-key", fetch })
-    await expect(client.files.get(fileId)).rejects.toBeInstanceOf(MitraConfigurationError)
-    expect(fetch).not.toHaveBeenCalled()
-    await expect(client.init()).resolves.toBeUndefined()
+  it("does not renew files authority through an API key provider on 401", async () => {
+    const token = `${Buffer.from(JSON.stringify({ alg: "HS512" })).toString("base64url")}.${Buffer.from(
+      JSON.stringify({ token_use: "app", app_id: config.appId, exp: 4102444800 }),
+    ).toString("base64url")}.signature`
+    const fetch = vi
+      .fn<Fetch>()
+      .mockResolvedValueOnce(Response.json({ accessToken: token }))
+      .mockResolvedValue(Response.json({ code: "INVALID_FILES_TOKEN" }, { status: 401 }))
+    const client = await createClientFromApiKey({ ...config, apiKey: "api-key", fetch })
+    await expect(client.files.get(fileId)).rejects.toMatchObject({ status: 401 })
+    expect(fetch.mock.calls.map(([url]) => String(url))).toEqual([
+      `${config.apiUrl}/iam/api/v1/auth/exchange`,
+      `${config.apiUrl}/data-manager/api/v1/files/${fileId}`,
+    ])
+    expect(fetch.mock.calls[1]?.[1]?.headers).toMatchObject({ Authorization: `Bearer ${token}` })
   })
 
   it("preserves a backend refusal without renewal, fallback or sensitive error output", async () => {
@@ -110,7 +122,7 @@ describe("files credentials", () => {
         { status: 403 },
       ),
     )
-    const client = createClient({ ...config, filesToken: "wrong-token", fetch })
+    const client = createClient({ ...config, accessToken: "wrong-token", fetch })
     const error = await client.files.get(fileId).catch((value: unknown) => value)
     expect(error).toMatchObject({
       status: 403,
