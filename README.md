@@ -41,7 +41,7 @@ async function loadOrder(orderId) {
 ## O que dá para fazer
 
 - `entities.<Tabela>`: `list`, `filter`, `get`, `create`, `bulkCreate`, `update`, `delete` e `deleteMany` nas tabelas do app.
-- `files`: autorizar upload e leitura, consultar metadados, confirmar retenção e excluir arquivos privados. Requer a capacidade de arquivos na Function.
+- `files`: autorizar upload e leitura, consultar metadados, confirmar retenção e excluir arquivos privados. Requer uma execução elegível de Function privada.
 - `queries`, `customQueries`, `sql` e `schema`: queries salvas, SQL parametrizado e estrutura das tabelas.
 - `functions`, `publicFunctions` e `workflows`: chamar outras Server Functions e workflows do app.
 - `integration.executeByAlias(alias, request)`: chama uma API externa configurada no app, com a credencial guardada na Mitra.
@@ -53,7 +53,7 @@ async function loadOrder(orderId) {
 
 ## Arquivos privados
 
-`files` usa somente `filesToken` ou `MITRA_FILES_TOKEN`, a credencial curta que o runtime injeta nas Functions privadas habilitadas. Sem ela, criar o cliente e usar os outros módulos continua funcionando; chamar `files` falha com `MitraConfigurationError`. Token comum, API key e renovação de API key não substituem essa credencial. Nenhum método devolve URL de armazenamento ou token.
+`files` usa somente `filesToken` ou `MITRA_FILES_TOKEN`, a credencial curta que o runtime injeta automaticamente nas execuções elegíveis de Functions privadas. Sem ela, criar o cliente e usar os outros módulos continua funcionando; chamar `files` falha com `MitraConfigurationError`. Token comum, API key e renovação de API key não substituem essa credencial. Nenhum método devolve URL de armazenamento ou token.
 
 ```javascript
 const { createClient } = require("@mitralab.io/functions-sdk")
@@ -87,7 +87,7 @@ Ao salvar uma mensagem, persista o vínculo com `fileId` em estado pendente, con
 
 A Function de leitura confere o vínculo real do arquivo com a conversa e a permissão atual antes de `createReadGrant`. A Function de exclusão também aplica sua própria política. Guarde apenas `fileId` no histórico. Concessão não é token bearer e não pode ser resgatada por outro destinatário. URLs já emitidas têm prazo curto e não podem ser recolhidas depois de usadas.
 
-Habilitar `filesEnabled` é operação administrativa do serviço Functions, com identidade de editor real. Os tipos de `functionsAdmin` vêm do Core e ainda não incluem esse campo nesta versão; use `PATCH /functions/api/v1/functions/{functionId}` com `{ "filesEnabled": true }` na API administrativa, autenticada como editor real, para habilitar a capacidade em Function privada JS/Python. Não use o token da execução para tentar habilitar a própria Function.
+Não há habilitação individual para arquivos. O Functions prepara a credencial para execuções privadas JavaScript/Python com ator autenticado elegível, fora de chamadas públicas, agendas e workflows. A emissão ocorre na preparação da execução, mesmo se o código não usar `files`. Cada Function continua responsável pela autorização de negócio.
 
 Erros de arquivos preservam `status`, `code`, `retryable` e `retryAfterSeconds`, mas descartam mensagem/detalhes upstream para impedir exposição de credenciais, concessões e URLs. Testes locais verificam o contrato; disponibilidade depende da entrega coordenada do backend e da infraestrutura de arquivos.
 
