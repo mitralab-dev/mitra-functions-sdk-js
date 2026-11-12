@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## Unreleased
+
+- Add the typed `files` module for private upload authorization, metadata, idempotent retention
+  confirmation, read grants and deletion (#105). It uses the execution's existing `accessToken`
+  (`MITRA_TOKEN` in the runtime), with no separate files credential or API key renewal.
+  Consumer Functions enforce business authorization; outputs omit storage URLs and credentials.
+- Document tested confirmation/retry, read and delete handlers with consumer-owned authorization
+  and persisted file links.
+
 ## 0.3.8
 
 - Depend on `@mitralab.io/sdk-core@0.3.9`: a history reread while a turn runs no longer drops the
