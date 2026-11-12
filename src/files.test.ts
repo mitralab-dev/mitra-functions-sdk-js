@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import { inspect } from "node:util"
 import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest"
 import {
@@ -18,11 +19,13 @@ import type {
 const fileId = "00000000-0000-4000-8000-000000000001"
 const grantId = "00000000-0000-4000-8000-000000000002"
 const key = "00000000-0000-4000-8000-000000000003"
-const digest = "a".repeat(43) + "="
+const bytes = Buffer.from("abc")
+const partHash = createHash("sha256").update(bytes).digest()
+const digest = partHash.toString("base64")
 const input: FileUploadInput = {
   name: "report.txt",
   contentType: "text/plain",
-  size: 3,
+  size: bytes.length,
   partChecksums: [digest],
 }
 const file: FileMetadata = {
@@ -30,7 +33,7 @@ const file: FileMetadata = {
   state: "UPLOADING",
   name: input.name,
   contentType: input.contentType,
-  size: 3,
+  size: bytes.length,
   checksum: null,
   pendingExpiresAt: "2030-01-01T00:00:00Z",
 }
@@ -47,7 +50,7 @@ const ready: FileMetadata = {
   checksum: {
     algorithm: "SHA256",
     type: "COMPOSITE",
-    value: `${digest}-1`,
+    value: `${createHash("sha256").update(partHash).digest("base64")}-1`,
     partSize: 5 * 1024 * 1024,
     partCount: 1,
   },
