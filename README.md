@@ -91,6 +91,71 @@ Não há habilitação individual para arquivos. O Functions acrescenta a autori
 
 Erros de arquivos preservam `status`, `code`, `retryable` e `retryAfterSeconds`, mas descartam mensagem/detalhes upstream para impedir exposição de credenciais, concessões e URLs. Testes locais verificam o contrato; disponibilidade depende da entrega coordenada do backend e da infraestrutura de arquivos.
 
+### Confirmar e retomar um vínculo pendente
+
+Os três handlers abaixo são Functions separadas. `file-policy` é implementado pelo consumidor:
+`authorizeAttachment(context, messageId, action)` carrega o vínculo persistido, verifica o ator
+autenticado e a permissão atual na conversa para aquela ação, e retorna `{ fileId }` do banco.
+Nunca retorna um `fileId` fornecido livremente pelo chamador. Para `read`, também exige que o
+vínculo esteja pronto. Uma recusa deve lançar erro antes de qualquer chamada a `files`.
+
+Antes de confirmar, o app salva o vínculo pendente com autorização de negócio. `markAttachmentReady`
+marca esse mesmo vínculo como pronto de forma idempotente. Se a confirmação ou essa gravação falhar,
+invoque novamente o handler com o mesmo `messageId`: ele reconcilia o estado sem criar outro vínculo.
+
+```javascript
+const { createClient } = require("@mitralab.io/functions-sdk")
+const { authorizeAttachment, markAttachmentReady } = require("./file-policy")
+
+exports.handler = async (event, context) => {
+  const attachment = await authorizeAttachment(context, event.messageId, "confirm")
+  const mitra = createClient()
+  const file = await mitra.files.get(attachment.fileId)
+  if (file.state !== "READY") await mitra.files.commit(attachment.fileId)
+  await markAttachmentReady(attachment)
+  return { fileId: attachment.fileId }
+}
+```
+
+### Autorizar leitura
+
+Cada invocação revalida a autorização e o vínculo. Preserve `idempotencyKey` ao repetir a mesma
+intenção; após a concessão expirar, use um UUID novo. O handler só concede leitura de arquivo `READY`.
+
+```javascript
+const { createClient } = require("@mitralab.io/functions-sdk")
+const { authorizeAttachment } = require("./file-policy")
+
+exports.handler = async (event, context) => {
+  const attachment = await authorizeAttachment(context, event.messageId, "read")
+  const mitra = createClient()
+  const file = await mitra.files.get(attachment.fileId)
+  if (file.state !== "READY") throw new Error("Attachment is not ready")
+  return mitra.files.createReadGrant(attachment.fileId, {
+    idempotencyKey: event.idempotencyKey,
+  })
+}
+```
+
+### Autorizar exclusão
+
+A permissão de excluir é independente da permissão de ler. A política do app decide quem pode
+descartar o arquivo vinculado; o SDK bloqueia leitura e agenda a limpeza no backend.
+
+```javascript
+const { createClient } = require("@mitralab.io/functions-sdk")
+const { authorizeAttachment } = require("./file-policy")
+
+exports.handler = async (event, context) => {
+  const attachment = await authorizeAttachment(context, event.messageId, "delete")
+  const mitra = createClient()
+  await mitra.files.delete(attachment.fileId)
+}
+```
+
+`src/files-examples.test.ts` executa estes blocos do README contra o cliente real, com política e
+HTTP simulados, incluindo recusas e retomada após falha. Eles não implementam a política do seu app.
+
 ## Sessão de agente
 
 A sessão vem do `@mitralab.io/sdk-core` e segue o T3, o harness que roda o agente. A box é o ambiente isolado onde o agente e o T3 rodam, um por chat, e é a fonte da verdade da conversa. A sessão não guarda fila própria: `queue`, `subagents` e `backgroundTasks` são o que a box informou por último.
