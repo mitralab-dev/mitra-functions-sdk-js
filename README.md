@@ -47,6 +47,7 @@ async function loadOrder(orderId) {
 - `messenger.notify(texto)`: manda uma notificação ao usuário autenticado.
 - `agentTasks.session(...)`: chat com agente, com envio durante a resposta, a fila do T3, subagentes e o histórico ao vivo. Veja [Sessão de agente](#sessão-de-agente).
 - `aiProviders.get()`: consulta os provedores e a quota de Included AI pelo Copilot, com o token e o app da Function. O retorno tipado `AiProviders` inclui `managedAiProfile` quando o servidor oferece `IMMERSION`, `null` quando inelegível e pode omitir o campo em servidores anteriores. A consulta não cria chave, não retorna segredo e não muda preferências; o perfil gerenciado é independente da disponibilidade de Included AI.
+- `files`: arquivos que o app guarda, com `upload`, `getUrl`, `getUrls`, `download`, `get` e `delete`, mais os passos `requestUpload` e `confirmUpload`. Veja [Arquivos que o app guarda](#arquivos-que-o-app-guarda).
 - `currentApp`: definição, arquivos, build e publicação do app da Function.
 - `functionsAdmin`, `integrationAdmin`, `agents`, `agentConnections`, `agentCredentials`, `imports` e `dataSources`: administração dos recursos do app. `agentCredentials.providers(agentId?)` devolve numa chamada só os provedores em que o próximo turno pode rodar, com modelos e a última leitura da assinatura.
 
@@ -83,33 +84,83 @@ Function que só dispara o prompt usa `send` e espera o evento `accepted` antes 
 
 Os tipos `AgentQueueItem`, `AgentBackgroundTask`, `AgentSubagent`, `AgentSubagentFrame` e `AgentSendOptions` saem deste pacote. O comportamento completo, com reconexão e replay, está no [README do Core](https://www.npmjs.com/package/@mitralab.io/sdk-core).
 
+## Arquivos que o app guarda
+
+O `files` fala com as rotas de arquivo do Data Manager com o token e o app da Function. Os bytes não passam pela plataforma: vão e voltam do S3 por um link assinado que vale poucos minutos. O app guarda o `fileId`, nunca o link.
+
+Arquivo `RESTRICTED` é entregue pela Function: o Data Manager dá o link a ela, e a regra de quem pode ver fica no código do app. Confira a regra antes de pedir o link:
+
+```javascript
+const { createClient } = require("@mitralab.io/functions-sdk")
+
+exports.handler = async (event, context) => {
+  const mitra = createClient()
+  const contract = await mitra.entities.Contract.get(event.contractId)
+  if (contract.manager_id !== context.userId) return { error: "FORBIDDEN" }
+
+  const { url, expiresAt } = await mitra.files.getUrl(contract.file_id)
+  return { url, expiresAt }
+}
+```
+
+O link de `RESTRICTED` sai porque o token da Function traz `FILE_READ_RESTRICTED`, que o IAM dá só ao papel de backend. Na execução pública, que roda sem usuário, o arquivo `RESTRICTED` responde `404`.
+
+Para o que a Function gera, como um relatório, use `appOwned: true`: o arquivo fica do app, sem dono, e precisa ser `APP`. Só Server Function pode pedir isso.
+
+```javascript
+const { createClient } = require("@mitralab.io/functions-sdk")
+
+exports.handler = async (event) => {
+  const mitra = createClient()
+  const { data: orders } = await mitra.entities.Order.filter({ month: event.month })
+  const csv = ["id,total", ...orders.map((order) => `${order.id},${order.total}`)].join("\n")
+
+  const file = await mitra.files.upload(new Blob([csv], { type: "text/csv" }), {
+    name: `pedidos-${event.month}.csv`,
+    kind: "PERMANENT",
+    visibility: "APP",
+    appOwned: true,
+  })
+  await mitra.entities.Report.create({ month: event.month, file_id: file.id })
+  return { fileId: file.id }
+}
+```
+
+- `upload(blob, options)` pede o envio, manda os bytes ao link e confirma, e só resolve com o arquivo `READY`.
+- Os bytes do `upload` e do `download` vão ao S3 pelo `fetch` global, nunca pelo `fetch` passado ao `createClient`: o link já é a credencial, e um `fetch` que acrescenta `Authorization` mandaria o token da Function ao S3.
+- O link não aparece em erro. Falha no envio ao S3, na confirmação ou no download chega como `FileTransferError`, com o `step` (`send`, `confirm` ou `download`) e o `fileId`; falha no pedido de envio ou de link chega como `MitraApiError`.
+- Falha no envio (`send`) apaga o arquivo `PENDING`, e `cleanedUp` diz se conseguiu. Falha na confirmação (`confirm`) não apaga, porque os bytes podem já estar no S3: o `cause` é o `MitraApiError` da confirmação, e você confirma de novo com `confirmUpload(fileId)` ou apaga com `delete(fileId)`.
+
+Os detalhes, como o `signal` para dar prazo à transferência, o `getUrls` em lote e o que o `cause` do `send` e do `download` guarda, estão em [Arquivos de app](https://github.com/mitralab-dev/mitra-core-sdk#arquivos-de-app), no README do Core. Os tipos `FileMetadata`, `FileUploadOptions`, `FileReadUrl`, `FileTransferError` e os demais do módulo saem deste pacote.
+
 ## Configuração
 
 `createClient(config?)` usa o campo de `config` e, quando ele falta, a variável de ambiente. Em teste, `createClientFromEnvironment(env)` lê só do objeto que você passar.
 
-| Campo         | Variável                                       | Obrigatório                    | Uso                                                                                                                                          |
-| ------------- | ---------------------------------------------- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apiUrl`      | `MITRA_API_URL` ou `MITRA_BASE_URL`            | sim                            | URL HTTP ou HTTPS do API gateway da Mitra, sem credencial, query ou fragmento                                                                |
-| `accessToken` | `MITRA_PLATFORM_ACCESS_TOKEN` ou `MITRA_TOKEN` | sim, exceto com API key        | token do runtime, enviado como `Bearer`                                                                                                      |
-| `appId`       | `MITRA_APP_ID` ou `MITRA_PROJECT_ID`           | sim                            | app em que o cliente atua                                                                                                                    |
-| `apiKey`      | `MITRA_API_KEY`                                | só em `createClientFromApiKey` | chave do app, para processo fora do runtime                                                                                                  |
-| `timeoutMs`   |                                                | não                            | prazo por requisição; sem ele, o SDK não impõe prazo, e dentro de uma Function vale o limite de tempo dela                                   |
-| `fetch`       |                                                | não                            | implementação de `fetch`; sem ela, usa a global                                                                                              |
-| `WebSocket`   |                                                | não                            | implementação de WebSocket, como a do pacote `ws`, para a sessão de agente usar socket; sem ela, vale o WebSocket global, se houver, ou HTTP |
+| Campo         | Variável                                       | Obrigatório                    | Uso                                                                                                                                                   |
+| ------------- | ---------------------------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apiUrl`      | `MITRA_API_URL` ou `MITRA_BASE_URL`            | sim                            | URL HTTP ou HTTPS do API gateway da Mitra, sem credencial, query ou fragmento                                                                         |
+| `accessToken` | `MITRA_PLATFORM_ACCESS_TOKEN` ou `MITRA_TOKEN` | sim, exceto com API key        | token do runtime, enviado como `Bearer`                                                                                                               |
+| `appId`       | `MITRA_APP_ID` ou `MITRA_PROJECT_ID`           | sim                            | app em que o cliente atua                                                                                                                             |
+| `apiKey`      | `MITRA_API_KEY`                                | só em `createClientFromApiKey` | chave do app, para processo fora do runtime                                                                                                           |
+| `timeoutMs`   |                                                | não                            | prazo por requisição; sem ele, o SDK não impõe prazo, e dentro de uma Function vale o limite de tempo dela                                            |
+| `fetch`       |                                                | não                            | implementação de `fetch` para as chamadas à API da Mitra; sem ela, usa a global. A box do agente e os links assinados de `files` usam sempre a global |
+| `WebSocket`   |                                                | não                            | implementação de WebSocket, como a do pacote `ws`, para a sessão de agente usar socket; sem ela, vale o WebSocket global, se houver, ou HTTP          |
 
 ## Erros
 
 `MitraApiError` traz `status`, `code`, `details`, `requestId`, `retryable` e `retryAfterSeconds`. O token não aparece na mensagem nem nos detalhes. `retryAfterSeconds` é quanto o servidor pediu para esperar, lido de `retry_after_seconds` no corpo ou do header `Retry-After` em segundos; sem valor inteiro válido, fica vazio.
 
-| Erro                                           | Quando                                                          | O que fazer                                                                         |
-| ---------------------------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `MitraConfigurationError`                      | configuração ausente ou inválida, ou `apps` usado com outro app | confira variáveis e argumentos; para o próprio app, use `currentApp`                |
-| `MitraApiError` `401` ou `403`                 | o token não dá acesso ao recurso                                | confira as permissões do app; nem todo módulo está liberado para o token do runtime |
-| `MitraApiError` `429` ou `5xx`                 | limite de requisições ou falha no servidor                      | repita só se a operação puder ser repetida; espere `retryAfterSeconds`, se vier     |
-| `REQUEST_TIMEOUT`, `NETWORK_ERROR`             | prazo estourado ou falha de rede, com `status` `0`              | aumente `timeoutMs` ou repita, se a operação permitir                               |
-| `INVALID_CREDENTIALS`, `AUTHENTICATION_FAILED` | a troca da API key falhou                                       | confira a chave e o `appId`                                                         |
-| `INVALID_RESPONSE`                             | resposta fora do formato esperado                               | atualize o SDK; se continuar, abra uma issue                                        |
-| `AgentTaskTurnError`                           | o turno do agente foi recusado ou terminou com erro             | leia o `code` e decida se manda de novo                                             |
+| Erro                                           | Quando                                                                | O que fazer                                                                                                                             |
+| ---------------------------------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `MitraConfigurationError`                      | configuração ausente ou inválida, ou `apps` usado com outro app       | confira variáveis e argumentos; para o próprio app, use `currentApp`                                                                    |
+| `MitraApiError` `401` ou `403`                 | o token não dá acesso ao recurso                                      | confira as permissões do app; nem todo módulo está liberado para o token do runtime                                                     |
+| `MitraApiError` `429` ou `5xx`                 | limite de requisições ou falha no servidor                            | repita só se a operação puder ser repetida; espere `retryAfterSeconds`, se vier                                                         |
+| `REQUEST_TIMEOUT`, `NETWORK_ERROR`             | prazo estourado ou falha de rede, com `status` `0`                    | aumente `timeoutMs` ou repita, se a operação permitir                                                                                   |
+| `INVALID_CREDENTIALS`, `AUTHENTICATION_FAILED` | a troca da API key falhou                                             | confira a chave e o `appId`                                                                                                             |
+| `INVALID_RESPONSE`                             | resposta fora do formato esperado                                     | atualize o SDK; se continuar, abra uma issue                                                                                            |
+| `AgentTaskTurnError`                           | o turno do agente foi recusado ou terminou com erro                   | leia o `code` e decida se manda de novo                                                                                                 |
+| `FileTransferError`                            | `files.upload` ou `files.download` falhou depois de o arquivo existir | veja o `step`: no `send`, apague se `cleanedUp` for `false`; no `confirm`, confirme de novo ou apague; no `download`, repita o download |
 
 ## Boas práticas
 

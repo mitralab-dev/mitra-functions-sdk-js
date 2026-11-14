@@ -488,6 +488,7 @@ describe("initialization", () => {
       client.customQueries,
       client.dataSources,
       client.entities,
+      client.files,
       client.functions,
       client.functionsAdmin,
       client.imports,

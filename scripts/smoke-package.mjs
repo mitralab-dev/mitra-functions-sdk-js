@@ -70,6 +70,26 @@ async function readProviders(): Promise<AiProviders> {
 void readProviders
 `,
     )
+    writeFileSync(
+      join(consumerDirectory, `files.${extension}`),
+      `import { createClient, FileTransferError, type FileMetadata, type FileReadUrl, type FilesModule, type FileTransferStep, type FileUploadOptions } from "@mitralab.io/functions-sdk"
+const client = createClient({ apiUrl: "https://api.example.com", accessToken: "token", appId: "app" })
+const files: FilesModule = client.files
+const options: FileUploadOptions = { name: "report.csv", kind: "PERMANENT", visibility: "APP", appOwned: true }
+async function generate(): Promise<FileMetadata | FileTransferStep> {
+  try {
+    return await files.upload(new Blob(["id"], { type: "text/csv" }), options)
+  } catch (error) {
+    if (error instanceof FileTransferError) return error.step
+    throw error
+  }
+}
+async function deliver(fileId: string): Promise<FileReadUrl> {
+  return files.getUrl(fileId)
+}
+void [generate, deliver]
+`,
+    )
   }
   execFileSync(
     process.execPath,
@@ -88,6 +108,8 @@ void readProviders
       "consumer.cts",
       "providers.mts",
       "providers.cts",
+      "files.mts",
+      "files.cts",
     ],
     { cwd: consumerDirectory, stdio: "inherit" },
   )
@@ -109,6 +131,7 @@ void readProviders
         `${moduleType === "module" ? 'import * as sdk from "@mitralab.io/functions-sdk"' : 'const sdk = require("@mitralab.io/functions-sdk")'}
 const client = sdk.createClient({ apiUrl: "https://api.example.com", accessToken: "token", appId: "app", fetch: () => { throw new Error("Unexpected request") } })
 if (typeof client.aiProviders?.get !== "function") throw new Error("aiProviders.get is missing from the installed package")
+if (typeof client.files?.upload !== "function" || typeof sdk.FileTransferError !== "function") throw new Error("files is missing from the installed package")
 `,
       ],
       { cwd: consumerDirectory, stdio: "inherit" },

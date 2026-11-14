@@ -30,9 +30,9 @@ export interface MitraClientConfig {
   /** Optional request deadline. By default, the Functions runtime owns operation time limits. */
   timeoutMs?: number
   /**
-   * fetch for the Mitra API calls, which carry the access token. The Agent box routes never use
-   * it: they take `globalThis.fetch`, so a fetch that adds `Authorization` cannot hand the token
-   * to the box.
+   * fetch for the Mitra API calls, which carry the access token. The Agent box routes and the
+   * signed storage links of `files` never use it: they take `globalThis.fetch`, so a fetch that
+   * adds `Authorization` cannot hand the token to the box or to storage.
    */
   fetch?: Fetch
   /**
