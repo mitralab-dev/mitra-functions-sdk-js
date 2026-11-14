@@ -34,6 +34,7 @@ export interface MitraClient {
   readonly customQueries: SdkCore["customQueries"]
   readonly dataSources: SdkCore["dataSources"]
   readonly entities: SdkCore["entities"]
+  readonly files: SdkCore["files"]
   readonly functions: SdkCore["functions"]
   readonly functionsAdmin: SdkCore["functionsAdmin"]
   readonly imports: SdkCore["imports"]
@@ -63,6 +64,7 @@ class DefaultMitraClient implements MitraClient {
   readonly customQueries: SdkCore["customQueries"]
   readonly dataSources: SdkCore["dataSources"]
   readonly entities: SdkCore["entities"]
+  readonly files: SdkCore["files"]
   readonly functions: SdkCore["functions"]
   readonly functionsAdmin: SdkCore["functionsAdmin"]
   readonly imports: SdkCore["imports"]
@@ -112,6 +114,9 @@ class DefaultMitraClient implements MitraClient {
       },
       getAppId: () => this.#appId,
       functions: { executeInvocationType: "sync", emptyInput: "empty-object" },
+      // No `files.fetch`, on purpose: without one, Core sends the bytes to the signed storage
+      // links with the global fetch. The link is the credential, and `config.fetch` may add
+      // `Authorization`, which would hand the Function token to storage.
       errors: coreErrors,
     })
 
@@ -150,6 +155,7 @@ class DefaultMitraClient implements MitraClient {
     this.customQueries = core.customQueries
     this.dataSources = core.dataSources
     this.entities = core.entities
+    this.files = core.files
     this.functions = core.functions
     this.functionsAdmin = core.functionsAdmin
     this.imports = core.imports

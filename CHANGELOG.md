@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented in this file.
 
+## Unreleased
+
+- Add `files`, the module for the files an app stores, from `@mitralab.io/sdk-core@0.3.10`,
+  called with the Function token and app: `upload`, `getUrl`, `getUrls`, `download`, `get` and
+  `delete`, plus the `requestUpload` and `confirmUpload` steps. `upload` takes `appOwned: true` for
+  a file of the app, without an owner. The bytes go to the signed storage links through the global
+  `fetch`, never through the `fetch` given to `createClient`, so a fetch that adds `Authorization`
+  does not hand the Function token to storage (#105).
+- Re-export `FileTransferError` and the file types: `FileCreator`, `FileDownloadOptions`,
+  `FileKind`, `FileMetadata`, `FileReadUrl`, `FileReadUrlItem`, `FileReadUrlOptions`,
+  `FileReadUrls`, `FilesModule`, `FileStatus`, `FileTransferErrorDetails`, `FileTransferStep`,
+  `FileUpload`, `FileUploadInput`, `FileUploadOptions` and `FileVisibility`.
+- Pin `@mitralab.io/sdk-core` to the published `0.3.10` release. This Functions SDK update is not
+  released yet.
+- Pin the SDK-PARITY-001 corpus to Core `0.3.10`, SHA-256
+  `7f32440fbc33ebceef13f2b6b8b0c05285588c6f6a94213d0d267bb2a27a58a6`, from immutable Core commit
+  `c4bb0274f0a34f55941f55bf8c4967ed97e6890e`. Run the HTTP adapter cases against this corpus.
+
 ## 0.3.8
 
 - Depend on `@mitralab.io/sdk-core@0.3.9`: a history reread while a turn runs no longer drops the

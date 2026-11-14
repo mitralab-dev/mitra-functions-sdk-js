@@ -15,6 +15,7 @@ for (const sdk of [commonJs, esm]) {
     },
   })
   assert.equal(typeof client.aiProviders.get, "function", "aiProviders.get is missing")
+  assert.equal(typeof client.files.upload, "function", "files.upload is missing")
 }
 
 for (const exported of [
@@ -23,6 +24,7 @@ for (const exported of [
   "MitraApiError",
   "MitraConfigurationError",
   "AgentTaskTurnError",
+  "FileTransferError",
 ]) {
   assert.equal(typeof commonJs[exported], "function", `CommonJS export ${exported} is missing`)
   assert.equal(typeof esm[exported], "function", `ESM export ${exported} is missing`)
@@ -62,6 +64,7 @@ for (const internal of [
   "CustomQueriesModule",
   "DataSourcesModule",
   "EntitiesModule",
+  "FilesModule",
   "FunctionsAdminModule",
   "FunctionsModule",
   "ImportsModule",

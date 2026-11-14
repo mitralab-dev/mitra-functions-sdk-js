@@ -3,7 +3,7 @@ export type { AccessTokenProvider } from "./api-key"
 export type { MitraClient } from "./client"
 export type { AppScopedAppsModule, CurrentAppModule } from "./app-scoped-apps"
 export { MitraApiError, MitraConfigurationError } from "./errors"
-export { AgentTaskTurnError } from "@mitralab.io/sdk-core"
+export { AgentTaskTurnError, FileTransferError } from "@mitralab.io/sdk-core"
 export type {
   AgentBackgroundTask,
   AgentBulkDeleteResult,
@@ -102,6 +102,22 @@ export type {
   EntitiesModule,
   EntitiesProxy,
   EntityTable,
+  FileCreator,
+  FileDownloadOptions,
+  FileKind,
+  FileMetadata,
+  FileReadUrl,
+  FileReadUrlItem,
+  FileReadUrlOptions,
+  FileReadUrls,
+  FilesModule,
+  FileStatus,
+  FileTransferErrorDetails,
+  FileTransferStep,
+  FileUpload,
+  FileUploadInput,
+  FileUploadOptions,
+  FileVisibility,
   FunctionBulkCreateInput,
   FunctionBulkDeleteInput,
   FunctionBulkDeleteResult,
