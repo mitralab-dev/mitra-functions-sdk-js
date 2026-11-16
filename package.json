@@ -71,7 +71,7 @@
     "mitra-sdk": "1.0.63-beta.42"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.1",
+    "@eslint/js": "^10.0.1",
     "@types/node": "^22.15.0",
     "@vitest/coverage-v8": "^3.2.4",
     "eslint": "^9.39.1",
